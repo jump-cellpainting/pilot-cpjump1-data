@@ -1,2 +1,1 @@
-# pilot-cpjump1-data
-JUMP-CP CPJUMP1 data
+JUMP Cell Painting CPJUMP1 Pilot data
