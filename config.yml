@@ -1,0 +1,45 @@
+---
+pipeline: 2019_07_11_JUMP-CP
+output_dir: profiles
+platemap_well_column: Metadata_well_position
+annotate:
+  perform: true
+  well_column: Metadata_Well
+  external : cpjump1_orf_metadata.tsv
+normalize:
+  perform: true
+  method: mad_robustize
+  features: infer
+  dmso: true
+feature_select:
+  perform: true
+  features: infer
+  dmso: true
+  operations:
+    - variance_threshold
+    - correlation_threshold
+    - drop_na_columns
+    - blocklist
+options:
+  compression: gzip
+  float_format: "%.5g"
+  samples: all
+---
+batch: 2020_11_04_CPJUMP1
+plates:
+  - name: BR00117006
+    cell: A549
+    process: true
+  - name: BR00117020
+    cell: A549
+    process: true
+  - name: BR00117021
+    cell: A549
+    process: true
+  - name: BR00118049
+    cell: A549
+    process: true
+  - name: BR00118050
+    cell: A549
+    process: true
+process: true
