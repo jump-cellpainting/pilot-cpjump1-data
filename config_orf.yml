@@ -30,16 +30,28 @@ plates:
   - name: BR00117006
     cell: A549
     process: true
+  - name: BR00118049
+    cell: A549
+    process: true
+  - name: BR00118050
+    cell: A549
+    process: true
+  - name: BR00118039
+    cell: U2OS
+    process: true
+  - name: BR00118040
+    cell: U2OS
+    process: true
   - name: BR00117020
     cell: A549
     process: true
   - name: BR00117021
     cell: A549
     process: true
-  - name: BR00118049
-    cell: A549
+  - name: BR00117022
+    cell: U2OS
     process: true
-  - name: BR00118050
-    cell: A549
+  - name: BR00117023
+    cell: U2OS
     process: true
 process: true
