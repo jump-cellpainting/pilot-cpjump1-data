@@ -1,4 +1,14 @@
-JUMP Cell Painting CPJUMP1 Pilot data
+## Other data
+
+Infection efficiency interpretation from GPP in CPJUMP1:
+
+* We see 90-100% typically at 48h but that’s not sufficient time for selection so it’s a bit unreliable - all the cells are still growing pretty happily whether they are infected or not because the Blast hasn't had time to kill them
+
+* they see  70% for 96h and that is more reliable
+
+Infection efficiency values - [CPJUMP-1_I.E_Analysis .xlsx](https://github.com/jump-cellpainting/pilot-cpjump1-data/files/6084839/CPJUMP-1_I.E_Analysis.xlsx)
+
+## JUMP Cell Painting CPJUMP1 Pilot profiles metadata
 
 Level 3, 4a and 4b profiles are in the folder `profiles/2020_11_04_CPJUMP1`. There are 51 plates 
 in total and the following are their descriptions
