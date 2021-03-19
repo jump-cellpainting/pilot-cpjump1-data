@@ -388,7 +388,7 @@ find_outlier_variables <-
 
 
 ```{r}
-munge_profiles <-
+collate_profiles <-
   function(experiments,
            batch,
            profile_level,
@@ -398,6 +398,7 @@ munge_profiles <-
            experiment_spec_cols,
            report_stats = TRUE,
            overwrite_profiles = FALSE,
+           write_csvgz = FALSE,
            load_if_present = FALSE,
            experiment_filter_tag = "all",
            additional_metadata_join_cols =
@@ -405,10 +406,10 @@ munge_profiles <-
            mapping_join_cols =
              c("Metadata_Plate")) {
     parquet_all_experiments_file <-
-      glue(
-        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.parquet"
-      )
+      glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.parquet")
     
+    csvgz_all_experiments_file <-
+      glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.csv.gz")
     
     if (!file.exists(parquet_all_experiments_file)) {
       for (i in 1:nrow(experiments)) {
@@ -476,55 +477,52 @@ munge_profiles <-
           
         } else {
           futile.logger::flog.info(glue("{parquet_file} already exists."))
-          
-          # if (load_if_present) {
-          #   futile.logger::flog.info(glue("Loading {parquet_file} ..."))
-          #   profiles <-
-          #     read_parquet(parquet_file)
-          #
-          #   # report on stats
-          # }
         }
       }
       
-      csvgz_all_experiments_file <-
-        glue(
-          "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.csv.gz"
-        )
-      
       if (!file.exists(csvgz_all_experiments_file) ||
+          !file.exists(parquet_all_experiments_file) ||
           overwrite_profiles) {
         profiles <-
           experiments %>%
           pull("Metadata_experiment_tag") %>%
           map_df(function(experiment_tag) {
             parquet_file <-
-              glue("output/{batch}_{experiment_tag}_{profile_level}.parquet")
+              glue("../collated/{batch}/{batch}_{experiment_tag}_{profile_level}.parquet")
             
             futile.logger::flog.info(glue("Loading {parquet_file} ..."))
             
             read_parquet(parquet_file)
             
           })
-        
-        futile.logger::flog.info(glue("Writing {csvgz_all_experiments_file} ..."))
-        
         profiles %<>% select(matches("Metadata_"), everything())
+
+      }
+      
+      if (!file.exists(csvgz_all_experiments_file) ||
+          overwrite_profiles) {
+        futile.logger::flog.info(glue("Writing {csvgz_all_experiments_file} ..."))
         
         profiles %>%
           write_csv(csvgz_all_experiments_file)
-        
+      }
+      
+      if (!file.exists(parquet_all_experiments_file) ||
+          overwrite_profiles) {
+      
         futile.logger::flog.info(glue("Writing {parquet_all_experiments_file} ..."))
         
         profiles %>%
-          write_parquet(parquet_all_experiments_file)
+          write_parquet(parquet_all_experiments_file, compression = "gzip", compression_level = 9)
         
       }
     }
+    
     futile.logger::flog.info(glue("{parquet_all_experiments_file} is available."))
     
     if (load_if_present) {
       futile.logger::flog.info(glue("Loading {parquet_all_experiments_file} ..."))
+      
       profiles <-
         read_parquet(parquet_all_experiments_file)
       
@@ -545,12 +543,10 @@ munge_profiles <-
       
     } else {
       NULL
+      
     }
     
-    
   }
-
-
 ```
 
 
@@ -558,7 +554,7 @@ munge_profiles <-
 
 ```{r}
 profiles <- 
-  munge_profiles(
+  collate_profiles(
   experiments = experiments,
   profile_level = "augmented",
   batch = batch,
@@ -583,11 +579,12 @@ profiles <-
 
 ```{r}
 profiles <- 
-  munge_profiles(
+  collate_profiles(
   experiments = experiments,
   profile_level = "normalized",
   batch = params$batch,
   overwrite_profiles = FALSE,
+  write_csvgz = TRUE,
   experiment_filter_tag = experiment_filter_tag,
   report_stats = TRUE,
   mapping = mapping,
@@ -602,121 +599,184 @@ profiles <-
 ) 
 ```
 
+```{r}
+# profiles <-
+#   collate_profiles(
+#     experiments = experiments,
+#     profile_level = "normalized_negcon",
+#     batch = params$batch,
+#     overwrite_profiles = FALSE,
+#     experiment_filter_tag = experiment_filter_tag,
+#     report_stats = TRUE,
+#     mapping = mapping,
+#     col_types_map = col_types_map,
+#     additional_metadata = additional_metadata,
+#     experiment_spec_cols = experiment_spec_cols,
+#     load_if_present = TRUE,
+#     additional_metadata_join_cols =
+#       c("Metadata_broad_sample"),
+#     mapping_join_cols =
+#       c("Metadata_Plate")
+#   ) 
+```
 
 # Load and save Level 4b profiles
 
-```{r results='asis'}
-profile_level_in <- "normalized"
-profile_level_out <- "normalized_feature_select"
-
-csvgz_all_experiments_file_in <-
-  glue(
-    "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_in}.csv.gz"
-  )
-
-csvgz_all_experiments_file_out <-
-  glue(
-    "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.csv.gz"
-  )
-
-parquet_all_experiments_file_out <-
-  glue(
-    "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.parquet"
-  )
-
-
-if (!file.exists(parquet_all_experiments_file_out)) {
-  if (!file.exists(csvgz_all_experiments_file_out) ||
-      overwrite_level_4b_profiles) {
-    futile.logger::flog.info("Run this command")
-    futile.logger::flog.info("conda env create --force --file environment.yml")
-    futile.logger::flog.info("conda activate pilot-cpjump1-data")
-    futile.logger::flog.info(
-      glue(
-        "python feature_select_pipeline/feature_select_pipeline.py --config feature_select_pipeline/config.yml --input {csvgz_all_experiments_file_in} --output {csvgz_all_experiments_file_out}"
-      )
-    )
-    stop(glue("Run command to generate {csvgz_all_experiments_file_out}"))
+```{r}
+reprocess_feature_select <-
+  function(profile_level_in,
+           profile_level_out,
+           batch,
+           experiment_filter_tag,
+           col_types_master,
+           overwrite_profiles = FALSE) {
     
-  } else {
-    futile.logger::flog.info(glue("Loading {csvgz_all_experiments_file_out} ..."))
+    csvgz_all_experiments_file_in <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_in}.csv.gz"
+      )
+    
+    csvgz_all_experiments_file_out <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.csv.gz"
+      )
+    
+    parquet_all_experiments_file_out <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.parquet"
+      )
+    
+    if (!file.exists(parquet_all_experiments_file_out)) {
+      if (!file.exists(csvgz_all_experiments_file_out) ||
+          overwrite_profiles) {
+        futile.logger::flog.info("Run this command")
+        futile.logger::flog.info("conda env create --force --file environment.yml")
+        futile.logger::flog.info("conda activate pilot-cpjump1-data")
+        futile.logger::flog.info(
+          glue(
+            "python feature_select_pipeline/feature_select_pipeline.py --config feature_select_pipeline/config.yml --input {csvgz_all_experiments_file_in} --output {csvgz_all_experiments_file_out}"
+          )
+        )
+        stop(glue(
+          "Run command to generate {csvgz_all_experiments_file_out}"
+        ))
+        
+      } else {
+        futile.logger::flog.info(glue("Loading {csvgz_all_experiments_file_out} ..."))
+        
+        profiles <-
+          read_csv(csvgz_all_experiments_file_out,
+                   col_types = col_types_master)
+        
+        futile.logger::flog.info(glue("Writing {parquet_all_experiments_file_out} ..."))
+        
+        profiles %<>% select(matches("Metadata_"), everything())
+        
+        profiles %>%
+          write_parquet(
+            parquet_all_experiments_file_out,
+            compression = "gzip",
+            compression_level = 9
+          )
+        
+      }
+    }
+    
+    futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_out} ..."))
     
     profiles <-
-      read_csv(csvgz_all_experiments_file_out,
-               col_types = col_types_master)
+      read_parquet(parquet_all_experiments_file_out)
+    
+    report_na_stats(profiles)
+    
+    n_outlier_variables <-
+      length(find_outlier_variables(profiles))
+    
+    futile.logger::flog.info(
+      glue(
+        "There are {n_outlier_variables} outlier variables assuming they were z-scored."
+      )
+    )
+  }
+```
+
+```{r results='asis'}
+profile_level_in <- "normalized"
+
+profile_level_out <- "normalized_feature_select"
+
+profiles <-
+  reprocess_feature_select(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag,
+    col_types_master = col_types_master
+  ) 
+```
+
+```{r}
+reprocess_outlier_trim <-
+  function(profile_level_in,
+           profile_level_out,
+           experiment_filter_tag,
+           batch,
+           overwrite_profiles = FALSE) {
+  parquet_all_experiments_file_in <-
+    glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_in}.parquet")
+  
+  parquet_all_experiments_file_out <-
+    glue(
+      "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.parquet"
+    )
+  
+  futile.logger::flog.info(glue("Looking for {parquet_all_experiments_file_in}"))
+  stopifnot(file.exists(parquet_all_experiments_file_in))
+  
+  if (!file.exists(parquet_all_experiments_file_out))  {
+    futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_in} ..."))
+    
+    profiles <- read_parquet(parquet_all_experiments_file_in)
+    
+    outlier_variables <- find_outlier_variables(profiles)
+    
+    profiles %<>% select(-any_of(outlier_variables))
     
     futile.logger::flog.info(glue("Writing {parquet_all_experiments_file_out} ..."))
     
     profiles %<>% select(matches("Metadata_"), everything())
     
-    
     profiles %>%
-      write_parquet(parquet_all_experiments_file_out)
+      write_parquet(parquet_all_experiments_file_out, compression = "gzip", compression_level = 9)
+    
+  } else {
+    futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_out} ..."))
+    
+    profiles <-
+      read_parquet(parquet_all_experiments_file_out)
     
   }
+  
+  report_na_stats(profiles)
+  
+  n_outlier_variables <-
+    length(find_outlier_variables(profiles))
+  
+  futile.logger::flog.info(glue(
+    "There are {n_outlier_variables} outlier variables assuming they were z-scored."
+  ))
 }
-
-futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_out} ..."))
-
-profiles <-
-  read_parquet(parquet_all_experiments_file_out)
-
-report_na_stats(profiles)
-
-n_outlier_variables <-
-  length(find_outlier_variables(profiles))
-
-futile.logger::flog.info(glue(
-  "There are {n_outlier_variables} outlier variables assuming they were z-scored."
-))
 ```
 
-```{r}
+```{r results='asis'}
 profile_level_in  <- "normalized_feature_select"
 profile_level_out <- "normalized_feature_select_outlier_trimmed"
 
-parquet_all_experiments_file_in <-
-  glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_in}.parquet")
-
-parquet_all_experiments_file_out <-
-  glue(
-    "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.parquet"
-  )
-
-stopifnot(file.exists(parquet_all_experiments_file_in))
-
-if (!file.exists(parquet_all_experiments_file_out))  {
-  futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_in} ..."))
-  
-  profiles <- read_parquet(parquet_all_experiments_file_in)
-  
-  outlier_variables <- find_outlier_variables(profiles)
-  
-  profiles %<>% select(-any_of(outlier_variables))
-  
-  futile.logger::flog.info(glue("Writing {parquet_all_experiments_file_out} ..."))
-  
-  profiles %<>% select(matches("Metadata_"), everything())
-  
-  profiles %>%
-    write_parquet(parquet_all_experiments_file_out)
-  
-} else {
-  futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_out} ..."))
-  
-  profiles <-
-    read_parquet(parquet_all_experiments_file_out)
-  
-}
-
-report_na_stats(profiles)
-
-n_outlier_variables <-
-  length(find_outlier_variables(profiles))
-
-futile.logger::flog.info(glue(
-  "There are {n_outlier_variables} outlier variables assuming they were z-scored."
-))
-
+profiles <-
+  reprocess_outlier_trim(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04",
+    experiment_filter_tag = experiment_filter_tag
+  ) 
 ```
-
