@@ -1,0 +1,14 @@
+---
+pipeline: 2019_07_11_JUMP-CP
+feature_select:
+  features: infer
+  operations:
+    - variance_threshold
+    - correlation_threshold
+    - drop_na_columns
+    - blocklist
+options:
+  compression: gzip
+  float_format: "%.5g"
+  samples: all
+

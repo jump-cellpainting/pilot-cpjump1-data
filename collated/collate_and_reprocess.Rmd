@@ -577,6 +577,8 @@ profiles <-
 
 # Load and save Level 4a profiles
 
+## Whole-plate normalized
+
 ```{r}
 profiles <- 
   collate_profiles(
@@ -599,25 +601,27 @@ profiles <-
 ) 
 ```
 
+## Negcon normalized
+
 ```{r}
-# profiles <-
-#   collate_profiles(
-#     experiments = experiments,
-#     profile_level = "normalized_negcon",
-#     batch = params$batch,
-#     overwrite_profiles = FALSE,
-#     experiment_filter_tag = experiment_filter_tag,
-#     report_stats = TRUE,
-#     mapping = mapping,
-#     col_types_map = col_types_map,
-#     additional_metadata = additional_metadata,
-#     experiment_spec_cols = experiment_spec_cols,
-#     load_if_present = TRUE,
-#     additional_metadata_join_cols =
-#       c("Metadata_broad_sample"),
-#     mapping_join_cols =
-#       c("Metadata_Plate")
-#   ) 
+profiles <-
+  collate_profiles(
+    experiments = experiments,
+    profile_level = "normalized_negcon",
+    batch = params$batch,
+    overwrite_profiles = FALSE,
+    experiment_filter_tag = experiment_filter_tag,
+    report_stats = TRUE,
+    mapping = mapping,
+    col_types_map = col_types_map,
+    additional_metadata = additional_metadata,
+    experiment_spec_cols = experiment_spec_cols,
+    load_if_present = TRUE,
+    additional_metadata_join_cols =
+      c("Metadata_broad_sample"),
+    mapping_join_cols =
+      c("Metadata_Plate")
+  )
 ```
 
 # Load and save Level 4b profiles
@@ -700,6 +704,8 @@ reprocess_feature_select <-
   }
 ```
 
+## Whole-plate normalized
+
 ```{r results='asis'}
 profile_level_in <- "normalized"
 
@@ -714,6 +720,24 @@ profiles <-
     col_types_master = col_types_master
   ) 
 ```
+## Negcon normalized
+
+```{r results='asis'}
+profile_level_in <- "normalized_negcon"
+
+profile_level_out <- "normalized_feature_select_negcon"
+
+profiles <-
+  reprocess_feature_select(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag,
+    col_types_master = col_types_master
+  ) 
+```
+
+# Load and save Level 4b outlier trimmed profiles
 
 ```{r}
 reprocess_outlier_trim <-
@@ -768,6 +792,8 @@ reprocess_outlier_trim <-
 }
 ```
 
+## Whole-plate normalized
+
 ```{r results='asis'}
 profile_level_in  <- "normalized_feature_select"
 profile_level_out <- "normalized_feature_select_outlier_trimmed"
@@ -776,7 +802,22 @@ profiles <-
   reprocess_outlier_trim(
     profile_level_in = profile_level_in,
     profile_level_out = profile_level_out,
-    batch = "2020_11_04",
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag
+  ) 
+```
+
+## Negcon normalized
+
+```{r results='asis'}
+profile_level_in  <- "normalized_feature_select_negcon"
+profile_level_out <- "normalized_feature_select_outlier_trimmed_negcon"
+
+profiles <-
+  reprocess_outlier_trim(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
     experiment_filter_tag = experiment_filter_tag
   ) 
 ```
