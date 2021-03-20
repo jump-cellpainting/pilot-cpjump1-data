@@ -144,18 +144,24 @@ profiles %<>%
              !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
              Metadata_pert_or_negcon == "empty" ~ "empty"
            )) %>%
+  rowwise() %>%
+  mutate(Metadata_negcon_control_type_trimmed = 
+           case_when(
+             !is.na(Metadata_negcon_control_type) ~ str_split(Metadata_negcon_control_type, " ") [[1]][1]
+           )) %>%
+  ungroup() %>%
   mutate(Metadata_target = 
            case_when(
              Metadata_broad_sample == "empty" ~ "empty",
+             Metadata_pert_or_negcon == "negcon" & Metadata_experiment_type == "CRISPR" ~ Metadata_negcon_control_type_trimmed,
              TRUE ~ Metadata_target
            ))
-  
 ```
 
 
 ```{r}
 profiles %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon) %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon, Metadata_negcon_control_type_trimmed) %>%
   tally()
 ```
 
