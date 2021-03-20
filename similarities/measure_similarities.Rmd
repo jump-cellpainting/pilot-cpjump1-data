@@ -1,0 +1,159 @@
+---
+title: "Measure similarities"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: "2020_11_04_CPJUMP1"
+  experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_experiment_condition = "Standard")
+  all_same_cols: !r NULL
+  normalization: whole_plate
+  debug_all_same_cols: !r c("Metadata_experiment_type")
+  debug_experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_timepoint = "48", Metadata_experiment_type = "Compound", Metadata_experiment_condition = "Standard")
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+
+```{r}
+source("https://raw.githubusercontent.com/shntnu/grit-benchmark/rtests/R/cytominer-eval.R")
+```
+
+
+```{r}
+experiment <- params$experiment
+
+if(!is.null(experiment)) {
+  experiment_tag <-
+    experiment %>%
+    unite("experiment_tag", everything()) %>%
+    pull("experiment_tag") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  experiment_tag <- "all"
+}
+
+all_same_cols <- params$all_same_cols
+
+if(!is.null(all_same_cols)) {
+  all_same_cols_tag <-
+    all_same_cols %>%
+    str_remove_all("Metadata_") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  all_same_cols_tag <- "none"
+}
+
+all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+
+comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+
+futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
+```
+
+
+```{r}
+if (params$normalization == "whole_plate") {
+  norm_suffix <- ""
+} else if (params$normalization == "negcon") {
+  norm_suffix <- "_negcon"
+}
+sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
+```
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+```{r}
+filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
+```
+
+# Load Level 4b profiles (whole-plate normalized)
+
+```{r}
+filename_prefix_profiles <- glue("{batch}_all_normalized_feature_select_outlier_trimmed{norm_suffix}")
+
+parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
+
+futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+
+stopifnot(file.exists(parquet_file))
+
+profiles <-
+  read_parquet(parquet_file) 
+
+if(!is.null(experiment))  {
+  profiles %<>% inner_join(experiment)
+  
+}
+
+profiles %>%
+  distinct(Metadata_experiment_condition, Metadata_experiment_type, Metadata_Plate) %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type) %>%
+  tally()
+```
+
+# Annotate negcon
+
+This chunk can be dropped when the metadata is fixed upstream
+
+```{r}
+profiles %<>% 
+  mutate(
+    Metadata_pert_or_negcon = 
+      case_when(
+        Metadata_pert_type == "control" & Metadata_control_type == "negcon" ~ "negcon",
+        Metadata_control_type == "negcon" ~ "negcon",
+        !is.na(Metadata_control_type) ~ "pert",
+        Metadata_pert_type == "trt" ~ "pert",
+        TRUE ~ "empty"
+        )
+    ) 
+```
+
+
+```{r}
+profiles %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon) %>%
+  tally()
+```
+
+
+# Compute similarity matrix on Level 4b
+
+```{r}
+futile.logger::flog.info("Calculating similarity ...")
+
+sim_df <- sim_calculate(profiles)
+
+if(!is.null(all_same_cols)) {
+  sim_df %<>% sim_all_same(all_same_cols = all_same_cols)
+}
+
+parquet_file <- 
+  glue("{batch}/{filename_prefix}_sim.parquet")
+
+sim_df %>%
+  sim_write(parquet_file)
+```
+
+
