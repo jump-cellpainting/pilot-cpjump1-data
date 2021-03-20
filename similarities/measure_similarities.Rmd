@@ -143,6 +143,11 @@ profiles %<>%
            case_when(
              !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
              Metadata_pert_or_negcon == "empty" ~ "empty"
+           )) %>%
+  mutate(Metadata_target = 
+           case_when(
+             Metadata_broad_sample == "empty" ~ "empty",
+             TRUE ~ Metadata_target
            ))
   
 ```
