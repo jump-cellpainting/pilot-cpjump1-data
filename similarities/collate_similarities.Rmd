@@ -78,10 +78,12 @@ if (params$normalization == "whole_plate") {
 sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
 ```
 
+
 ```{r}
 batch <- params$batch
 futile.logger::flog.info(glue("Batch = {batch}"))
 ```
+
 
 ```{r}
 filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
@@ -320,20 +322,20 @@ level_1_and_2_1_metrics <-
   inner_join(level_2_1_metrics, by = c(all_same_cols_rep))
 
 
-metric_sets <- c(
+metric_set_names <- c(
   "level_1_0_metrics",
   "level_1_metrics",
   "level_2_1_metrics",
   "level_1_and_2_1_metrics"
 )
 
-walk(metric_sets, function(metric_set) {
+walk(metric_set_names, function(metric_set_name) {
   parquet_file <-
-    glue("{batch}/{filename_prefix}_{metric_set}.parquet")
+    glue("{batch}/{filename_prefix}_{metric_set_name}.parquet")
   
   futile.logger::flog.info(glue("Writing {parquet_file} ..."))
   
-  eval(sym(metric_set)) %>%
+  eval(sym(metric_set_name)) %>%
     arrow::write_parquet(glue(parquet_file), compression = "gzip", compression_level = 9)
   
 })
