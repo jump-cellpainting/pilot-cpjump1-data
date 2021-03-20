@@ -344,8 +344,8 @@ comparision_tag &lt;- paste(experiment_tag, all_same_cols_tag, sep = &quot;_&quo
 
 futile.logger::flog.info(glue(&quot;Comparison tag = {comparision_tag}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMTo0NjozOV0gQ29tcGFyaXNvbiB0YWcgPSBVMk9TX1N0YW5kYXJkX3NhbWVfbm9uZVxuIn0= -->
-<pre><code>INFO [2021-03-20 11:46:39] Comparison tag = U2OS_Standard_same_none</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMjo0ODoyMl0gQ29tcGFyaXNvbiB0YWcgPSBVMk9TX1N0YW5kYXJkX3NhbWVfbm9uZVxuIn0= -->
+<pre><code>INFO [2021-03-20 12:48:22] Comparison tag = U2OS_Standard_same_none</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -370,8 +370,8 @@ sprintf(&quot;Normalization = %s. Using suffix = &#39;%s&#39;&quot;, params$norm
 <pre class="r"><code>batch &lt;- params$batch
 futile.logger::flog.info(glue(&quot;Batch = {batch}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMTo0NjozOV0gQmF0Y2ggPSAyMDIwXzExXzA0X0NQSlVNUDFcbiJ9 -->
-<pre><code>INFO [2021-03-20 11:46:39] Batch = 2020_11_04_CPJUMP1</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMjo0ODoyMl0gQmF0Y2ggPSAyMDIwXzExXzA0X0NQSlVNUDFcbiJ9 -->
+<pre><code>INFO [2021-03-20 12:48:22] Batch = 2020_11_04_CPJUMP1</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -390,8 +390,8 @@ futile.logger::flog.info(glue(&quot;Batch = {batch}&quot;))</code></pre>
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZnV0aWxlLmxvZ2dlcjo6ZmxvZy5pbmZvKFwiTG9hZGluZyBzaW1pbGFyaXR5IC4uLlwiKVxuYGBgIn0= -->
 <pre class="r"><code>futile.logger::flog.info(&quot;Loading similarity ...&quot;)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMTo0NjozOV0gTG9hZGluZyBzaW1pbGFyaXR5IC4uLlxuIn0= -->
-<pre><code>INFO [2021-03-20 11:46:39] Loading similarity ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMjo0ODoyMl0gTG9hZGluZyBzaW1pbGFyaXR5IC4uLlxuIn0= -->
+<pre><code>INFO [2021-03-20 12:48:22] Loading similarity ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGFycXVldF9maWxlIDwtIFxuICBnbHVlKFwie2JhdGNofS97ZmlsZW5hbWVfcHJlZml4fV9zaW0ucGFycXVldFwiKVxuXG5zaW1fZGYgPC1cbiAgICBzaW1fcmVhZChwYXJxdWV0X2ZpbGUpXG5gYGAifQ== -->
 <pre class="r"><code>parquet_file &lt;- 
@@ -678,11 +678,11 @@ walk(metric_set_names, function(metric_set_name) {
   
 })</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMTo0NzoyMl0gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9ub25lX25vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX2xldmVsXzFfMF9tZXRyaWNzLnBhcnF1ZXQgLi4uXG5JTkZPIFsyMDIxLTAzLTIwIDExOjQ3OjIyXSBXcml0aW5nIDIwMjBfMTFfMDRfQ1BKVU1QMS8yMDIwXzExXzA0X0NQSlVNUDFfVTJPU19TdGFuZGFyZF9zYW1lX25vbmVfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfbGV2ZWxfMV9tZXRyaWNzLnBhcnF1ZXQgLi4uXG5JTkZPIFsyMDIxLTAzLTIwIDExOjQ3OjIyXSBXcml0aW5nIDIwMjBfMTFfMDRfQ1BKVU1QMS8yMDIwXzExXzA0X0NQSlVNUDFfVTJPU19TdGFuZGFyZF9zYW1lX25vbmVfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfbGV2ZWxfMl8xX21ldHJpY3MucGFycXVldCAuLi5cbklORk8gWzIwMjEtMDMtMjAgMTE6NDc6MjJdIFdyaXRpbmcgMjAyMF8xMV8wNF9DUEpVTVAxLzIwMjBfMTFfMDRfQ1BKVU1QMV9VMk9TX1N0YW5kYXJkX3NhbWVfbm9uZV9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9sZXZlbF8xX2FuZF8yXzFfbWV0cmljcy5wYXJxdWV0IC4uLlxuIn0= -->
-<pre><code>INFO [2021-03-20 11:47:22] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_1_0_metrics.parquet ...
-INFO [2021-03-20 11:47:22] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_1_metrics.parquet ...
-INFO [2021-03-20 11:47:22] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_2_1_metrics.parquet ...
-INFO [2021-03-20 11:47:22] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_1_and_2_1_metrics.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMjo0OTowN10gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9ub25lX25vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX2xldmVsXzFfMF9tZXRyaWNzLnBhcnF1ZXQgLi4uXG5JTkZPIFsyMDIxLTAzLTIwIDEyOjQ5OjA3XSBXcml0aW5nIDIwMjBfMTFfMDRfQ1BKVU1QMS8yMDIwXzExXzA0X0NQSlVNUDFfVTJPU19TdGFuZGFyZF9zYW1lX25vbmVfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfbGV2ZWxfMV9tZXRyaWNzLnBhcnF1ZXQgLi4uXG5JTkZPIFsyMDIxLTAzLTIwIDEyOjQ5OjA3XSBXcml0aW5nIDIwMjBfMTFfMDRfQ1BKVU1QMS8yMDIwXzExXzA0X0NQSlVNUDFfVTJPU19TdGFuZGFyZF9zYW1lX25vbmVfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfbGV2ZWxfMl8xX21ldHJpY3MucGFycXVldCAuLi5cbklORk8gWzIwMjEtMDMtMjAgMTI6NDk6MDddIFdyaXRpbmcgMjAyMF8xMV8wNF9DUEpVTVAxLzIwMjBfMTFfMDRfQ1BKVU1QMV9VMk9TX1N0YW5kYXJkX3NhbWVfbm9uZV9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9sZXZlbF8xX2FuZF8yXzFfbWV0cmljcy5wYXJxdWV0IC4uLlxuIn0= -->
+<pre><code>INFO [2021-03-20 12:49:07] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_1_0_metrics.parquet ...
+INFO [2021-03-20 12:49:07] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_1_metrics.parquet ...
+INFO [2021-03-20 12:49:07] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_2_1_metrics.parquet ...
+INFO [2021-03-20 12:49:07] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_level_1_and_2_1_metrics.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGFycXVldF9maWxlIDwtXG4gIGdsdWUoXCJ7YmF0Y2h9L3tmaWxlbmFtZV9wcmVmaXh9X3NpbV9jb2xsYXRlZC5wYXJxdWV0XCIpXG5cbmZ1dGlsZS5sb2dnZXI6OmZsb2cuaW5mbyhnbHVlKFwiV3JpdGluZyB7cGFycXVldF9maWxlfSAuLi5cIikpXG5gYGAifQ== -->
 <pre class="r"><code>parquet_file &lt;-
@@ -690,8 +690,8 @@ INFO [2021-03-20 11:47:22] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_St
 
 futile.logger::flog.info(glue(&quot;Writing {parquet_file} ...&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMTo0NzoyMl0gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9ub25lX25vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX3NpbV9jb2xsYXRlZC5wYXJxdWV0IC4uLlxuIn0= -->
-<pre><code>INFO [2021-03-20 11:47:22] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_sim_collated.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0yMCAxMjo0OTowN10gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9ub25lX25vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX3NpbV9jb2xsYXRlZC5wYXJxdWV0IC4uLlxuIn0= -->
+<pre><code>INFO [2021-03-20 12:49:07] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_sim_collated.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY29sbGF0ZWRfc2ltICU+JVxuICBhcnJvdzo6d3JpdGVfcGFycXVldChnbHVlKHBhcnF1ZXRfZmlsZSksIGNvbXByZXNzaW9uID0gXCJnemlwXCIsIGNvbXByZXNzaW9uX2xldmVsID0gOSlcbmBgYCJ9 -->
 <pre class="r"><code>collated_sim %&gt;%
