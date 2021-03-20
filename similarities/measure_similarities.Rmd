@@ -127,13 +127,34 @@ profiles %<>%
         Metadata_pert_type == "trt" ~ "pert",
         TRUE ~ "empty"
         )
-    ) 
+    ) %>%
+  mutate(Metadata_target = 
+           case_when(
+             !is.na(Metadata_target) ~ Metadata_target,
+             !is.na(Metadata_gene) ~ Metadata_gene
+           )) %>%
+  mutate(Metadata_pert_iname = 
+           case_when(
+             !is.na(Metadata_pert_iname) ~ Metadata_pert_iname,
+             !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+             Metadata_pert_or_negcon == "empty" ~ "empty"
+           ))
+  
 ```
 
 
 ```{r}
 profiles %>%
   group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon) %>%
+  tally()
+```
+
+
+```{r}
+profiles %>%
+  filter(Metadata_experiment_type != "Compound") %>%
+  filter(is.na(Metadata_pert_iname) | is.na(Metadata_target)) %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon, Metadata_pert_iname, Metadata_target) %>%
   tally()
 ```
 
