@@ -123,7 +123,7 @@ This chunk can be dropped when the metadata is fixed upstream
 
 ```{r}
 profiles %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon, Metadata_negcon_control_type_trimmed) %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_negcon_or_other, Metadata_negcon_control_type_trimmed) %>%
   tally()
 ```
 
@@ -132,7 +132,7 @@ profiles %>%
 profiles %>%
   filter(Metadata_experiment_type != "Compound") %>%
   filter(is.na(Metadata_pert_iname) | is.na(Metadata_target)) %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_pert_or_negcon, Metadata_pert_iname, Metadata_target) %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_negcon_or_other, Metadata_pert_iname, Metadata_target) %>%
   tally()
 ```
 
