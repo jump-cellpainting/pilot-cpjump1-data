@@ -1,0 +1,269 @@
+---
+title: "Inspect similarities"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: "2020_11_04_CPJUMP1"
+  experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_experiment_condition = "Standard")
+  all_same_cols: !r NULL
+  normalization: whole_plate
+  debug_all_same_cols: !r c("Metadata_experiment_type")
+  debug_experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_timepoint = "48", Metadata_experiment_type = "Compound", Metadata_experiment_condition = "Standard")
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+
+```{r}
+source("https://raw.githubusercontent.com/shntnu/grit-benchmark/rtests/R/cytominer-eval.R")
+```
+
+
+```{r}
+experiment <- params$experiment
+
+if(!is.null(experiment)) {
+  experiment_tag <-
+    experiment %>%
+    unite("experiment_tag", everything()) %>%
+    pull("experiment_tag") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  experiment_tag <- "all"
+}
+
+all_same_cols <- params$all_same_cols
+
+if(!is.null(all_same_cols)) {
+  all_same_cols_tag <-
+    all_same_cols %>%
+    str_remove_all("Metadata_") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  all_same_cols_tag <- "none"
+}
+
+all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+
+comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+
+futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
+```
+
+
+```{r}
+if (params$normalization == "whole_plate") {
+  norm_suffix <- ""
+} else if (params$normalization == "negcon") {
+  norm_suffix <- "_negcon"
+}
+sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
+```
+
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+
+```{r}
+filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
+```
+
+# Load metrics
+
+```{r}
+metric_set_names <- c(
+  "level_1_metrics",
+  "level_2_1_metrics",
+  "level_1_and_2_1_metrics"
+)
+
+metric_sets <- 
+  map(metric_set_names, function(metric_set) {
+  parquet_file <-
+    glue("{batch}/{filename_prefix}_{metric_set}.parquet")
+  
+  futile.logger::flog.info(glue("Reading {parquet_file} ..."))
+  
+  arrow::read_parquet(glue(parquet_file))
+  
+})
+
+names(metric_sets) <- metric_set_names
+
+parquet_file <-
+  glue("{batch}/{filename_prefix}_sim_collated.parquet")
+
+futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+
+collated_sim <-
+  arrow::read_parquet(glue(parquet_file))
+
+all_same_cols_rep <- attr(collated_sim, "all_same_cols_rep")
+
+rm(collated_sim)
+```
+
+# Load cell counts
+
+```{r}
+parquet_file <- glue("../collated/{batch}/{batch}_all_augmented.parquet")
+
+futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+
+stopifnot(file.exists(parquet_file))
+
+cell_count_df <-
+  read_parquet(parquet_file, col_select = matches("Metadata_|Cells_Number_Object_Number")) %>%
+  mutate(across(matches("Metadata"), as.character)) %>%
+  select(matches("Metadata_"), cell_count = Cells_Number_Object_Number) %>%
+  inner_join(experiment) %>%
+  group_by(across(all_of(all_same_cols_rep))) %>%
+  summarise(cell_count = median(cell_count), .groups = "keep") %>%
+  ungroup() %>%
+  select(
+    Metadata_experiment_condition, 
+    Metadata_experiment_type, 
+    Metadata_cell_line, 
+    Metadata_timepoint, 
+    Metadata_Well, 
+    cell_count)
+
+#     Metadata_broad_sample was dropped because the upstream metadata has not yet been fixed. It should be added back!
+
+```
+
+# Inspect metrics
+
+```{r rows.print=20}
+metric_sets[["level_1_metrics"]] %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_pert_or_negcon) %>%
+  tally()
+```
+
+```{r}
+metric_sets[["level_2_1_metrics"]] %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_pert_or_negcon) %>%
+  tally()
+```
+
+```{r}
+metric_sets[["level_1_and_2_1_metrics"]] %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_pert_or_negcon) %>%
+  tally()
+```
+# Plot metrics
+
+```{r}
+level_1_metrics <- 
+  metric_sets[["level_1_metrics"]]
+```
+
+
+```{r}
+level_1_metrics %>%
+  anti_join(cell_count_df)
+
+level_1_metrics %<>%
+  inner_join(cell_count_df)
+```
+
+```{r fig.asp=1}
+y_threshold <-
+  level_1_metrics %>%
+  filter(Metadata_pert_or_negcon == "negcon") %>%
+  group_by(Metadata_experiment_type,
+           Metadata_timepoint) %>%
+  summarise(
+    sim_scaled_mean_ref_i_mean_i_thresh =
+      mean(sim_scaled_mean_ref_i_mean_i) + 3 * sd(sim_scaled_mean_ref_i_mean_i),
+    .groups = "keep"
+  )
+
+x_threshold <- 
+  level_1_metrics %>%
+  filter(Metadata_pert_or_negcon == "negcon") %>%
+  group_by(Metadata_experiment_type,
+           Metadata_timepoint) %>%
+  summarise(
+    cell_count_thresh =
+      mean(cell_count) - 3 * sd(cell_count),
+    .groups = "keep"
+  )
+
+p <- 
+  level_1_metrics %>%
+  mutate(point_order = as.numeric(factor(Metadata_pert_or_negcon, levels = c("empty", "negcon", "pert"), ordered = TRUE))) %>%
+  arrange(desc(point_order)) %>%
+  ggplot(aes(cell_count, 
+             sim_scaled_mean_ref_i_mean_i, 
+             color = Metadata_pert_or_negcon)) + 
+  geom_point() + 
+  scale_colour_manual(values = c("green", "red", "black")) + 
+  facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
+  geom_hline(data = y_threshold, aes(yintercept = sim_scaled_mean_ref_i_mean_i_thresh), alpha = 0.5) +
+  geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
+  ggtitle(experiment_tag)
+
+print(p)
+```
+```{r fig.asp=1}
+y_threshold <-
+  level_1_metrics %>%
+  filter(Metadata_pert_or_negcon == "negcon") %>%
+  group_by(Metadata_experiment_type,
+           Metadata_timepoint) %>%
+  summarise(
+    sim_mean_i_mean_i_thresh =
+      mean(sim_mean_i_mean_i) + 3 * sd(sim_mean_i_mean_i),
+    .groups = "keep"
+  )
+
+x_threshold <- 
+  level_1_metrics %>%
+  filter(Metadata_pert_or_negcon == "negcon") %>%
+  group_by(Metadata_experiment_type,
+           Metadata_timepoint) %>%
+  summarise(
+    cell_count_thresh =
+      mean(cell_count) - 3 * sd(cell_count),
+    .groups = "keep"
+  )
+
+p <- 
+  level_1_metrics %>%
+  mutate(point_order = as.numeric(factor(Metadata_pert_or_negcon, levels = c("empty", "negcon", "pert"), ordered = TRUE))) %>%
+  arrange(desc(point_order)) %>%
+  ggplot(aes(cell_count, 
+             sim_mean_i_mean_i, 
+             color = Metadata_pert_or_negcon)) + 
+  geom_point() + 
+  scale_colour_manual(values = c("green", "red", "black")) + 
+  facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
+  geom_hline(data = y_threshold, aes(yintercept = sim_mean_i_mean_i_thresh), alpha = 0.5) +
+  geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
+  ggtitle(experiment_tag)
+
+print(p)
+```
+
