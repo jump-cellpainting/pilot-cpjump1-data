@@ -134,14 +134,12 @@ crispr_metadata <-
   ) %>%
   select(Metadata_broad_sample = broad_sample,
          Metadata_negcon_control_type = negcon_control_type,
-         Metadata_gene = gene,
          Metadata_target_sequence = target_sequence)
 
 orf_metadata <-
   read_tsv(
     glue("{basedir}/JUMP-Target_orf_metadata.tsv"),
-    col_types = cols_only(broad_sample = col_character(),
-                          gene = col_character())
+    col_types = cols_only(broad_sample = col_character())
   ) %>%
   select(Metadata_broad_sample = broad_sample)
 
@@ -373,14 +371,16 @@ collate_profiles <-
            mapping_join_cols =
              c("Metadata_Plate")) {
     parquet_all_experiments_file <-
-      glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.parquet")
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.parquet"
+      )
     
     csvgz_all_experiments_file <-
       glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.csv.gz")
     
     if (!file.exists(parquet_all_experiments_file)) {
       for (i in 1:nrow(experiments)) {
-        experiment <- experiments[i,]
+        experiment <- experiments[i, ]
         
         experiment_tag <- experiment$Metadata_experiment_tag
         
@@ -408,7 +408,7 @@ collate_profiles <-
           
           if (experiment$Metadata_experiment_type == "Compound") {
             futile.logger::flog.info(glue("Modifying compound metadata ..."))
-          
+            
             profiles %<>% mutate(Metadata_broad_sample = ifelse(
               is.na(Metadata_broad_sample),
               "DMSO",
@@ -418,70 +418,10 @@ collate_profiles <-
           }
           
           futile.logger::flog.info(glue("Appending more metadata ..."))
-
+          
           profiles %<>%
             left_join(additional_metadata[[experiment$Metadata_experiment_type]],
                       by = additional_metadata_join_cols)
-          
-          # The column names was changed later in JUMP-Target
-          profiles %<>% mutate(Metadata_gene = Metadata_genes)
-          
-          futile.logger::flog.info(glue("Fixing metadata ..."))
-          
-          profiles %<>%
-            mutate(
-              Metadata_pert_type = 
-                case_when(
-                  !is.na(Metadata_pert_type) ~ Metadata_pert_type,
-                  TRUE ~ "empty"
-                )
-            ) %>%
-            mutate(
-              Metadata_negcon_or_other =
-                case_when(
-                  Metadata_pert_type == "control" &
-                    Metadata_control_type == "negcon" ~ "negcon",
-                  Metadata_pert_type == "control" &
-                    Metadata_control_type != "negcon" ~ "pert",
-                  Metadata_pert_type == "trt" ~ "pert",
-                  Metadata_pert_type == "empty" ~ "empty"
-                )
-            )  %>%
-            mutate(Metadata_target =
-                     case_when(
-                       !is.na(Metadata_target) ~ Metadata_target,
-                       !is.na(Metadata_gene) ~ Metadata_gene
-                     )) %>%
-            mutate(
-              Metadata_pert_iname =
-                case_when(
-                  !is.na(Metadata_pert_iname) ~ Metadata_pert_iname,
-                  !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
-                  Metadata_negcon_or_other == "empty" ~ "empty"
-                )
-            ) %>%
-            mutate(
-              Metadata_broad_sample =
-                case_when(
-                  !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
-                  Metadata_negcon_or_other == "empty" ~ "empty"
-                )
-            ) %>%
-            rowwise() %>%
-            mutate(Metadata_negcon_control_type_trimmed =
-                     case_when(
-                       !is.na(Metadata_negcon_control_type) ~ str_split(Metadata_negcon_control_type, " ") [[1]][1]
-                     )) %>%
-            ungroup() %>%
-            mutate(
-              Metadata_target =
-                case_when(
-                  Metadata_broad_sample == "empty" ~ "empty",
-                  Metadata_negcon_or_other == "negcon" &
-                    Metadata_experiment_type == "CRISPR" ~ Metadata_negcon_control_type_trimmed,
-                  TRUE ~ Metadata_target
-                )
-            )
           
           futile.logger::flog.info(glue("Writing {parquet_file} ..."))
           
@@ -509,8 +449,66 @@ collate_profiles <-
             read_parquet(parquet_file)
             
           })
+        
+        
+        futile.logger::flog.info(glue("Fixing metadata ..."))
+        
+        profiles %<>%
+          mutate(Metadata_gene = Metadata_genes) %>%
+        mutate(Metadata_pert_type =
+                 case_when(
+                   !is.na(Metadata_pert_type) ~ Metadata_pert_type,
+                   TRUE ~ "empty"
+                 )) %>%
+          mutate(
+            Metadata_negcon_or_other =
+              case_when(
+                Metadata_pert_type == "control" &
+                  Metadata_control_type == "negcon" ~ "negcon",
+                Metadata_pert_type == "control" &
+                  Metadata_control_type != "negcon" ~ "pert",
+                Metadata_pert_type == "trt" ~ "pert",
+                Metadata_pert_type == "empty" ~ "empty"
+              )
+          )  %>%
+          mutate(Metadata_target =
+                   case_when(
+                     !is.na(Metadata_target) ~ Metadata_target,
+                     !is.na(Metadata_gene) ~ Metadata_gene
+                   )) %>%
+          mutate(
+            Metadata_pert_iname =
+              case_when(
+                !is.na(Metadata_pert_iname) ~ Metadata_pert_iname,
+                !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+                Metadata_negcon_or_other == "empty" ~ "empty"
+              )
+          ) %>%
+          mutate(
+            Metadata_broad_sample =
+              case_when(
+                !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+                Metadata_negcon_or_other == "empty" ~ "empty"
+              )
+          ) %>%
+          rowwise() %>%
+          mutate(Metadata_negcon_control_type_trimmed =
+                   case_when(
+                     !is.na(Metadata_negcon_control_type) ~ str_split(Metadata_negcon_control_type, " ") [[1]][1]
+                   )) %>%
+          ungroup() %>%
+          mutate(
+            Metadata_target =
+              case_when(
+                Metadata_broad_sample == "empty" ~ "empty",
+                Metadata_negcon_or_other == "negcon" &
+                  Metadata_experiment_type == "CRISPR" ~ Metadata_negcon_control_type_trimmed,
+                TRUE ~ Metadata_target
+              )
+          )
+        
         profiles %<>% select(matches("Metadata_"), everything())
-
+        
       }
       
       if (!file.exists(csvgz_all_experiments_file) ||
@@ -523,11 +521,14 @@ collate_profiles <-
       
       if (!file.exists(parquet_all_experiments_file) ||
           overwrite_profiles) {
-      
         futile.logger::flog.info(glue("Writing {parquet_all_experiments_file} ..."))
         
         profiles %>%
-          write_parquet(parquet_all_experiments_file, compression = "gzip", compression_level = 9)
+          write_parquet(
+            parquet_all_experiments_file,
+            compression = "gzip",
+            compression_level = 9
+          )
         
       }
     }
