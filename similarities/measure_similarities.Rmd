@@ -117,45 +117,7 @@ profiles %>%
 This chunk can be dropped when the metadata is fixed upstream
 
 ```{r}
-profiles %<>% 
-  mutate(
-    Metadata_pert_or_negcon = 
-      case_when(
-        Metadata_pert_type == "control" & Metadata_control_type == "negcon" ~ "negcon",
-        Metadata_control_type == "negcon" ~ "negcon",
-        !is.na(Metadata_control_type) ~ "pert",
-        Metadata_pert_type == "trt" ~ "pert",
-        TRUE ~ "empty"
-        )
-    ) %>%
-  mutate(Metadata_target = 
-           case_when(
-             !is.na(Metadata_target) ~ Metadata_target,
-             !is.na(Metadata_gene) ~ Metadata_gene
-           )) %>%
-  mutate(Metadata_pert_iname = 
-           case_when(
-             !is.na(Metadata_pert_iname) ~ Metadata_pert_iname,
-             !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
-             Metadata_pert_or_negcon == "empty" ~ "empty"
-           )) %>%
-  mutate(Metadata_broad_sample = 
-           case_when(
-             !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
-             Metadata_pert_or_negcon == "empty" ~ "empty"
-           )) %>%
-  rowwise() %>%
-  mutate(Metadata_negcon_control_type_trimmed = 
-           case_when(
-             !is.na(Metadata_negcon_control_type) ~ str_split(Metadata_negcon_control_type, " ") [[1]][1]
-           )) %>%
-  ungroup() %>%
-  mutate(Metadata_target = 
-           case_when(
-             Metadata_broad_sample == "empty" ~ "empty",
-             Metadata_pert_or_negcon == "negcon" & Metadata_experiment_type == "CRISPR" ~ Metadata_negcon_control_type_trimmed,
-             TRUE ~ Metadata_target
-           ))
+
 ```
 
 
