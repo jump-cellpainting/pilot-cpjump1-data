@@ -155,24 +155,105 @@ cell_count_df <-
 
 # Inspect metrics
 
+## Functions
+
+
+```{r}
+plot_metric_v_cellcount <- 
+  function(metrics,
+           metric_name, 
+           plot_title) {
+    
+  # metrics <- level_1_metrics
+  # metric_name <- "sim_scaled_mean_ref_i_mean_i"
+  # plot_title <- experiment_tag
+    
+  metric_sym <- sym(metric_name)
+
+  x_threshold <- 
+    metrics %>%
+    filter(Metadata_negcon_or_other == "negcon") %>%
+    group_by(Metadata_experiment_type,
+             Metadata_timepoint) %>%
+    summarise(
+      cell_count_thresh =
+        mean(cell_count) - 3 * sd(cell_count),
+      .groups = "keep"
+    )
+  
+  y_threshold <-
+    metrics %>%
+    filter(Metadata_negcon_or_other == "negcon") %>%
+    group_by(Metadata_experiment_type,
+             Metadata_timepoint) %>%
+    summarise(
+      metric_thresh =
+        mean(!!metric_sym) + 3 * sd(!!metric_sym),
+      .groups = "keep"
+    )
+  
+  frac_non_negcon_above_y_threshold <-
+    metrics %>%
+    inner_join(y_threshold) %>%
+    filter(Metadata_negcon_or_other != "negcon") %>%
+    group_by(Metadata_experiment_type,
+             Metadata_timepoint) %>%
+    mutate(is_above_thresh = (!!metric_sym) > metric_thresh) %>%
+    summarise(
+      n_non_negcon_above_thresh =
+        sum(is_above_thresh),
+      n_non_negcon = n(),
+      frac_non_negcon_above_thresh = round(n_non_negcon_above_thresh / n_non_negcon, 2),
+      .groups = "keep"
+    )
+  
+  frac_above_y_threshold <-
+    metrics %>%
+    inner_join(y_threshold) %>%
+    group_by(Metadata_experiment_type,
+             Metadata_timepoint) %>%
+    mutate(is_above_thresh = (!!metric_sym) > metric_thresh) %>%
+    summarise(
+      n_above_thresh =
+        sum(is_above_thresh),
+      n = n(),
+      frac_above_thresh = round(n_above_thresh / n, 2),
+      .groups = "keep"
+    )
+    
+  p <- 
+    metrics %>%
+    mutate(point_order = as.numeric(factor(Metadata_negcon_or_other, levels = c("empty", "negcon", "pert"), ordered = TRUE))) %>%
+    arrange(desc(point_order)) %>%
+    ggplot(aes(cell_count, 
+               !!metric_sym, 
+               color = Metadata_negcon_or_other)) + 
+    geom_point() + 
+    scale_colour_manual(values = c("empty" = "green", "negcon" = "red", "pert" = "black")) + 
+    facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
+    geom_hline(data = y_threshold, aes(yintercept = metric_thresh), alpha = 0.5) +
+    geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
+    ggtitle(plot_title)
+  
+  print(p)
+  
+  print(frac_non_negcon_above_y_threshold)
+  
+  print(frac_above_y_threshold)
+  
+}
+```
+
+
+## Level 1
+
 ```{r rows.print=20}
 metric_sets[["level_1_metrics"]] %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_pert_or_negcon) %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_negcon_or_other) %>%
   tally()
 ```
 
-```{r}
-metric_sets[["level_2_1_metrics"]] %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_pert_or_negcon) %>%
-  tally()
-```
-
-```{r}
-metric_sets[["level_1_and_2_1_metrics"]] %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_pert_or_negcon) %>%
-  tally()
-```
-# Plot metrics
+### Plot metrics
 
 ```{r}
 level_1_metrics <- 
@@ -189,81 +270,55 @@ level_1_metrics %<>%
 ```
 
 ```{r fig.asp=1}
-y_threshold <-
-  level_1_metrics %>%
-  filter(Metadata_pert_or_negcon == "negcon") %>%
-  group_by(Metadata_experiment_type,
-           Metadata_timepoint) %>%
-  summarise(
-    sim_scaled_mean_ref_i_mean_i_thresh =
-      mean(sim_scaled_mean_ref_i_mean_i) + 3 * sd(sim_scaled_mean_ref_i_mean_i),
-    .groups = "keep"
-  )
-
-x_threshold <- 
-  level_1_metrics %>%
-  filter(Metadata_pert_or_negcon == "negcon") %>%
-  group_by(Metadata_experiment_type,
-           Metadata_timepoint) %>%
-  summarise(
-    cell_count_thresh =
-      mean(cell_count) - 3 * sd(cell_count),
-    .groups = "keep"
-  )
-
-p <- 
-  level_1_metrics %>%
-  mutate(point_order = as.numeric(factor(Metadata_pert_or_negcon, levels = c("empty", "negcon", "pert"), ordered = TRUE))) %>%
-  arrange(desc(point_order)) %>%
-  ggplot(aes(cell_count, 
-             sim_scaled_mean_ref_i_mean_i, 
-             color = Metadata_pert_or_negcon)) + 
-  geom_point() + 
-  scale_colour_manual(values = c("green", "red", "black")) + 
-  facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
-  geom_hline(data = y_threshold, aes(yintercept = sim_scaled_mean_ref_i_mean_i_thresh), alpha = 0.5) +
-  geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
-  ggtitle(experiment_tag)
-
-print(p)
+plot_metric_v_cellcount(level_1_metrics, "sim_mean_i_mean_i", experiment_tag)
 ```
+
+
 ```{r fig.asp=1}
-y_threshold <-
-  level_1_metrics %>%
-  filter(Metadata_pert_or_negcon == "negcon") %>%
-  group_by(Metadata_experiment_type,
-           Metadata_timepoint) %>%
-  summarise(
-    sim_mean_i_mean_i_thresh =
-      mean(sim_mean_i_mean_i) + 3 * sd(sim_mean_i_mean_i),
-    .groups = "keep"
-  )
+plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_non_rep_i_mean_i", experiment_tag)
+```
 
-x_threshold <- 
-  level_1_metrics %>%
-  filter(Metadata_pert_or_negcon == "negcon") %>%
-  group_by(Metadata_experiment_type,
-           Metadata_timepoint) %>%
-  summarise(
-    cell_count_thresh =
-      mean(cell_count) - 3 * sd(cell_count),
-    .groups = "keep"
-  )
 
-p <- 
-  level_1_metrics %>%
-  mutate(point_order = as.numeric(factor(Metadata_pert_or_negcon, levels = c("empty", "negcon", "pert"), ordered = TRUE))) %>%
-  arrange(desc(point_order)) %>%
-  ggplot(aes(cell_count, 
-             sim_mean_i_mean_i, 
-             color = Metadata_pert_or_negcon)) + 
-  geom_point() + 
-  scale_colour_manual(values = c("green", "red", "black")) + 
-  facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
-  geom_hline(data = y_threshold, aes(yintercept = sim_mean_i_mean_i_thresh), alpha = 0.5) +
-  geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
-  ggtitle(experiment_tag)
+```{r fig.asp=1}
+plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_ref_i_mean_i", experiment_tag)
+```
 
-print(p)
+
+## Level 1 and 2_1 
+
+```{r rows.print=20}
+metric_sets[["level_1_and_2_1_metrics"]] %>%
+  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_negcon_or_other) %>%
+  tally()
+```
+
+### Plot metrics
+
+```{r}
+level_1_and_2_1_metrics <- 
+  metric_sets[["level_1_and_2_1_metrics"]]
+```
+
+
+```{r}
+level_1_and_2_1_metrics %>%
+  anti_join(cell_count_df)
+
+level_1_and_2_1_metrics %<>%
+  inner_join(cell_count_df)
+```
+
+
+```{r fig.asp=1}
+plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_mean_g", experiment_tag)
+```
+
+
+```{r fig.asp=1}
+plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_non_rep_g", experiment_tag)
+```
+
+```{r fig.asp=1}
+plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_ref_g", experiment_tag)
 ```
 
