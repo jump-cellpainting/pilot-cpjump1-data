@@ -19,7 +19,7 @@ This notebook does 3 things
 
 1. Produces collated versions of the `2020_11_04_CPJUMP1` Level 3 (`_augmented`) and Level 4a (`_normalized`) as [Parquet](https://parquet.apache.org/) files.
 2. Recomputes Level 4b (`_normalized_feature_select`) on the collated Level 4a file.
-3. Computes another version of the Level 4b file (`normalized_feature_select_outlier_trimmed`) files with the outliers removed. using bespoke logic for this dataset. This should be done directly in the profiling recipe in the future, once we have figured out how to handle outliers better.
+3. Computes another version of the Level 4b file (`normalized_feature_select_outlier_trimmed`) files with the outliers removed, using bespoke logic for this dataset. This should be done directly in the profiling recipe in the future, once we have figured out how to handle outliers better.
 
 The notebook generates several intermediate parquet files for convenience, but they are not committed to the repository.
 
@@ -130,7 +130,6 @@ crispr_metadata <-
     glue("{basedir}/JUMP-Target_crispr_metadata.tsv"),
     col_types = cols_only(broad_sample = col_character(),
                           negcon_control_type = col_character(),
-                          gene = col_character(),
                           target_sequence = col_character())
   ) %>%
   select(Metadata_broad_sample = broad_sample,
@@ -144,8 +143,7 @@ orf_metadata <-
     col_types = cols_only(broad_sample = col_character(),
                           gene = col_character())
   ) %>%
-  select(Metadata_broad_sample = broad_sample,
-         Metadata_gene = gene)
+  select(Metadata_broad_sample = broad_sample)
 
 additional_metadata <-
   list(ORF = orf_metadata,
@@ -404,38 +402,85 @@ collate_profiles <-
               read_csv(filename, col_types = col_types_map[[experiment$Metadata_experiment_type]])
             })
           
+          futile.logger::flog.info(glue("Appending metadata ..."))
+          
           profiles %<>% inner_join(mapping, by = mapping_join_cols)
           
           if (experiment$Metadata_experiment_type == "Compound") {
+            futile.logger::flog.info(glue("Modifying compound metadata ..."))
+          
             profiles %<>% mutate(Metadata_broad_sample = ifelse(
               is.na(Metadata_broad_sample),
               "DMSO",
               Metadata_broad_sample
             ))
             
-            profiles %<>% mutate(
-              Metadata_pert_or_negcon =
-                ifelse(
-                  Metadata_pert_type == "control" &
-                    Metadata_control_type == "negcon",
-                  "negcon",
-                  "pert"
-                )
-            )
           }
           
+          futile.logger::flog.info(glue("Appending more metadata ..."))
+
           profiles %<>%
             left_join(additional_metadata[[experiment$Metadata_experiment_type]],
-                      by = additional_metadata_join_cols) %>%
-            replace_na(
-              list(
-                Metadata_gene = "Unknown",
-                Metadata_InChIKey = "Unknown",
-                Metadata_negcon_control_type = "Unknown",
-                Metadata_pert_iname = "Unknown",
-                Metadata_pubchem_cid = "Unknown",
-                Metadata_target_sequence = "Unknown"
-              )
+                      by = additional_metadata_join_cols)
+          
+          # The column names was changed later in JUMP-Target
+          profiles %<>% mutate(Metadata_gene = Metadata_genes)
+          
+          futile.logger::flog.info(glue("Fixing metadata ..."))
+          
+          profiles %<>%
+            mutate(
+              Metadata_pert_type = 
+                case_when(
+                  !is.na(Metadata_pert_type) ~ Metadata_pert_type,
+                  TRUE ~ "empty"
+                )
+            ) %>%
+            mutate(
+              Metadata_negcon_or_other =
+                case_when(
+                  Metadata_pert_type == "control" &
+                    Metadata_control_type == "negcon" ~ "negcon",
+                  Metadata_pert_type == "control" &
+                    Metadata_control_type != "negcon" ~ "pert",
+                  Metadata_pert_type == "trt" ~ "pert",
+                  Metadata_pert_type == "empty" ~ "empty"
+                )
+            )  %>%
+            mutate(Metadata_target =
+                     case_when(
+                       !is.na(Metadata_target) ~ Metadata_target,
+                       !is.na(Metadata_gene) ~ Metadata_gene
+                     )) %>%
+            mutate(
+              Metadata_pert_iname =
+                case_when(
+                  !is.na(Metadata_pert_iname) ~ Metadata_pert_iname,
+                  !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+                  Metadata_negcon_or_other == "empty" ~ "empty"
+                )
+            ) %>%
+            mutate(
+              Metadata_broad_sample =
+                case_when(
+                  !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+                  Metadata_negcon_or_other == "empty" ~ "empty"
+                )
+            ) %>%
+            rowwise() %>%
+            mutate(Metadata_negcon_control_type_trimmed =
+                     case_when(
+                       !is.na(Metadata_negcon_control_type) ~ str_split(Metadata_negcon_control_type, " ") [[1]][1]
+                     )) %>%
+            ungroup() %>%
+            mutate(
+              Metadata_target =
+                case_when(
+                  Metadata_broad_sample == "empty" ~ "empty",
+                  Metadata_negcon_or_other == "negcon" &
+                    Metadata_experiment_type == "CRISPR" ~ Metadata_negcon_control_type_trimmed,
+                  TRUE ~ Metadata_target
+                )
             )
           
           futile.logger::flog.info(glue("Writing {parquet_file} ..."))
