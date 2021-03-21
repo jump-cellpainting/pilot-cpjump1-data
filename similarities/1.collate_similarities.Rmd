@@ -127,7 +127,7 @@ Do so only for those (a, b) pairs that
 
 ```{r}
 reference <-
-  data.frame(Metadata_pert_or_negcon = "negcon")
+  data.frame(Metadata_negcon_or_other = "negcon")
 
 all_same_cols_ref <-
   c("Metadata_cell_line",
@@ -161,7 +161,7 @@ all_same_cols_rep <-
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
-    "Metadata_pert_or_negcon",
+    "Metadata_negcon_or_other",
     "Metadata_Well") # including well here
 ```
 
@@ -190,7 +190,7 @@ all_same_cols_rep_ref <-
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
-    "Metadata_pert_or_negcon",
+    "Metadata_negcon_or_other",
     "Metadata_Well"
   )
 ```
@@ -270,7 +270,7 @@ annotation_cols <-
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
-    "Metadata_pert_or_negcon",
+    "Metadata_negcon_or_other",
     "Metadata_Well")
 
 collated_sim <-
