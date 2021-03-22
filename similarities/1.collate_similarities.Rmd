@@ -1,0 +1,351 @@
+---
+title: "Collate similarities"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: "2020_11_04_CPJUMP1"
+  experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_experiment_condition = "Standard")
+  all_same_cols: !r NULL
+  normalization: whole_plate
+  debug_all_same_cols: !r c("Metadata_experiment_type")
+  debug_experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_timepoint = "48", Metadata_experiment_type = "Compound", Metadata_experiment_condition = "Standard")
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+
+```{r}
+source("https://raw.githubusercontent.com/shntnu/grit-benchmark/rtests/R/cytominer-eval.R")
+```
+
+
+```{r}
+experiment <- params$experiment
+
+if(!is.null(experiment)) {
+  experiment_tag <-
+    experiment %>%
+    unite("experiment_tag", everything()) %>%
+    pull("experiment_tag") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  experiment_tag <- "all"
+}
+
+all_same_cols <- params$all_same_cols
+
+if(!is.null(all_same_cols)) {
+  all_same_cols_tag <-
+    all_same_cols %>%
+    str_remove_all("Metadata_") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  all_same_cols_tag <- "none"
+}
+
+all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+
+comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+
+futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
+```
+
+
+```{r}
+if (params$normalization == "whole_plate") {
+  norm_suffix <- ""
+} else if (params$normalization == "negcon") {
+  norm_suffix <- "_negcon"
+}
+sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
+```
+
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+
+```{r}
+filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
+```
+
+
+# Load similarity matrix on Level 4b
+
+```{r}
+futile.logger::flog.info("Loading similarity ...")
+
+parquet_file <- 
+  glue("{batch}/{filename_prefix}_sim.parquet")
+
+sim_df <-
+    sim_read(parquet_file)
+```
+
+# Compute similarity sets
+
+## Filter out some rows
+
+```{r}
+drop_group <-
+  NULL
+```
+
+## Similarity to reference
+
+Fetch similarities between
+
+a. all rows (except, optionally those containing `reference`)
+
+and 
+
+b. all rows containing `reference`
+
+Do so only for those (a, b) pairs that 
+
+- have *same* values in *all* columns of `all_same_cols_ref`
+
+```{r}
+reference <-
+  data.frame(Metadata_negcon_or_other = "negcon")
+
+all_same_cols_ref <-
+  c("Metadata_cell_line",
+    "Metadata_timepoint",
+    "Metadata_experiment_condition",
+    "Metadata_experiment_type",
+    "Metadata_Plate")
+```
+
+## Similarity to replicates (no references)
+
+Fetch similarities between
+
+a. all rows except `reference` rows
+
+and
+
+b. all rows except `reference` rows (i.e. to each other)
+
+Do so for only those (a, b) pairs that 
+
+- have *same* values in *all* columns of `all_same_cols_rep`
+
+Keep, both, (a, b) and (b, a)
+
+```{r}
+all_same_cols_rep <-
+  c("Metadata_cell_line",
+    "Metadata_timepoint",
+    "Metadata_experiment_condition",
+    "Metadata_experiment_type",
+    "Metadata_broad_sample",
+    "Metadata_pert_iname",
+    "Metadata_negcon_or_other",
+    "Metadata_Well") # including well here
+```
+
+## Similarity to replicates (only references)
+
+Fetch similarities between
+
+a. all rows containing `reference`
+
+and
+
+b. all rows containing `reference` (i.e. to each other)
+
+Do so for only those (a, b) pairs that 
+
+- have *same* values in *all* columns of `all_same_cols_rep_ref`. 
+
+Keep, both, (a, b) and (b, a)
+
+```{r}
+all_same_cols_rep_ref <-
+  c(
+    "Metadata_cell_line",
+    "Metadata_timepoint",
+    "Metadata_experiment_condition",
+    "Metadata_experiment_type",
+    "Metadata_broad_sample",
+    "Metadata_pert_iname",
+    "Metadata_negcon_or_other",
+    "Metadata_Well"
+  )
+```
+
+## Similarity to non-replicates
+
+Fetch similarities between
+
+a. all rows (except, optionally, `reference` rows)
+
+and
+
+b. all rows except `reference` rows
+
+Do so for only those (a, b) pairs that 
+
+- have *same* values in *all* columns of `all_same_cols_non_rep`
+
+- have *different* values in *all* columns `all_different_cols_non_rep`
+
+- have *different* values in *at least one* column of `any_different_cols_non_rep`
+
+Keep, both, (a, b) and (b, a)
+
+```{r}
+any_different_cols_non_rep <-
+  c("Metadata_cell_line",
+    "Metadata_broad_sample",
+    "Metadata_timepoint",
+    "Metadata_Well")
+all_same_cols_non_rep <-
+  c("Metadata_cell_line",
+    "Metadata_experiment_condition",
+    "Metadata_experiment_type",
+    "Metadata_timepoint",
+    "Metadata_Plate")
+all_different_cols_non_rep <-
+  c("Metadata_target")
+```
+
+## Similarity to group
+
+Fetch similarities between
+
+a. all rows 
+
+and 
+
+b. all rows
+
+Do so only for those (a, b) pairs that 
+
+- have *same* values in *all* columns of `all_same_cols_group`
+
+- have *different* values in *at least one* column of `any_different_cols_group`
+
+```{r}
+all_same_cols_group <-
+  c("Metadata_cell_line",
+    "Metadata_experiment_condition",
+    "Metadata_experiment_type",
+    "Metadata_timepoint",
+    "Metadata_target")
+any_different_cols_group <-
+  c("Metadata_cell_line",
+    "Metadata_timepoint",
+    "Metadata_broad_sample")
+```
+
+## Combine all and annotate the similarity matrix
+
+```{r}
+annotation_cols <-
+  c("Metadata_cell_line",
+    "Metadata_timepoint",
+    "Metadata_experiment_condition",
+    "Metadata_experiment_type",
+    "Metadata_broad_sample",
+    "Metadata_pert_iname",
+    "Metadata_negcon_or_other",
+    "Metadata_Well")
+
+collated_sim <-
+  sim_collate(
+    sim_df,
+    reference,
+    all_same_cols_rep = all_same_cols_rep,
+    all_same_cols_rep_ref = all_same_cols_rep_ref,
+    all_same_cols_ref = all_same_cols_ref,
+    any_different_cols_non_rep = any_different_cols_non_rep,
+    all_same_cols_non_rep = all_same_cols_non_rep,
+    all_different_cols_non_rep = all_different_cols_non_rep,
+    any_different_cols_group = any_different_cols_group,
+    all_same_cols_group = all_same_cols_group,
+    annotation_cols = annotation_cols,
+    drop_group = drop_group
+  )
+```
+
+# Compute metrics
+
+```{r}
+norm_non_rep_metrics <- 
+  sim_metrics(collated_sim, "non_rep", calculate_grouped = TRUE)
+
+norm_ref_metrics <- 
+  sim_metrics(collated_sim, "ref", calculate_grouped = TRUE)
+
+level_1_0_metrics <-
+  inner_join(
+    norm_non_rep_metrics[["per_row"]],
+    norm_ref_metrics[["per_row"]]
+  )
+
+level_1_metrics <-
+  inner_join(
+    norm_non_rep_metrics[["per_set"]],
+    norm_ref_metrics[["per_set"]]
+  )
+
+level_2_1_metrics <-
+  inner_join(
+    norm_non_rep_metrics[["per_set_group"]],
+    norm_ref_metrics[["per_set_group"]]
+  )
+
+level_1_and_2_1_metrics <-
+  level_1_metrics %>%
+  inner_join(level_2_1_metrics, by = c(all_same_cols_rep))
+
+
+metric_set_names <- c(
+  "level_1_0_metrics",
+  "level_1_metrics",
+  "level_2_1_metrics",
+  "level_1_and_2_1_metrics"
+)
+
+walk(metric_set_names, function(metric_set_name) {
+  parquet_file <-
+    glue("{batch}/{filename_prefix}_{metric_set_name}.parquet")
+  
+  futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+  
+  eval(sym(metric_set_name)) %>%
+    arrow::write_parquet(glue(parquet_file), compression = "gzip", compression_level = 9)
+  
+})
+
+parquet_file <-
+  glue("{batch}/{filename_prefix}_sim_collated.parquet")
+
+futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+
+collated_sim %>%
+  arrow::write_parquet(glue(parquet_file), compression = "gzip", compression_level = 9)
+```
+
