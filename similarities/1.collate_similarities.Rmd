@@ -31,7 +31,7 @@ library(arrow)
 
 
 ```{r}
-source("https://raw.githubusercontent.com/shntnu/grit-benchmark/rtests/R/cytominer-eval.R")
+source("https://raw.githubusercontent.com/shntnu/grit-benchmark/47ae58e83e3db85eeaf43b51cfe0dc5a187410cb/R/cytominer-eval.R")
 ```
 
 
