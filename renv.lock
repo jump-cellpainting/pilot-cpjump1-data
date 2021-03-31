@@ -415,6 +415,18 @@
       "Repository": "CRAN",
       "Hash": "61e4a10781dd00d7d81dd06ca9b94e95"
     },
+    "matric": {
+      "Package": "matric",
+      "Version": "0.1.0",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "matric",
+      "RemoteUsername": "shntnu",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "c14c52c3efe3bb1b7eb7fbd8b346d89c1b53eaf1",
+      "Hash": "a4f3b2826813e201687e6b63f892f086"
+    },
     "mgcv": {
       "Package": "mgcv",
       "Version": "1.8-33",
