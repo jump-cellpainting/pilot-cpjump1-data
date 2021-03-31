@@ -13,11 +13,19 @@ output:
     df_print: paged
 params:
   batch: "2020_11_04_CPJUMP1"
-  experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_experiment_condition = "Standard")
+  experiment: 
+    value:
+      Metadata_cell_line: U2OS
+      Metadata_experiment_condition: Standard
   all_same_cols: !r NULL
   normalization: whole_plate
-  debug_all_same_cols: !r c("Metadata_experiment_type")
-  debug_experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_timepoint = "48", Metadata_experiment_type = "Compound", Metadata_experiment_condition = "Standard")
+  debug_all_same_cols: Metadata_experiment_type
+  debug_experiment: 
+    value:
+      Metadata_cell_line: U2OS
+      Metadata_timepoint: "48"
+      Metadata_experiment_type: Compound
+      Metadata_experiment_condition: Standard
 ---
 
 # Setup
@@ -27,16 +35,12 @@ library(magrittr)
 library(tidyverse)
 library(glue)
 library(arrow)
+library(matric)
 ```
 
 
 ```{r}
-source("https://raw.githubusercontent.com/shntnu/grit-benchmark/47ae58e83e3db85eeaf43b51cfe0dc5a187410cb/R/cytominer-eval.R")
-```
-
-
-```{r}
-experiment <- params$experiment
+experiment <- as.data.frame(params$experiment)
 
 if(!is.null(experiment)) {
   experiment_tag <-
