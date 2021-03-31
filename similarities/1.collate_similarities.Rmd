@@ -18,6 +18,7 @@ params:
       Metadata_cell_line: U2OS
       Metadata_experiment_condition: Standard
   all_same_cols: !r NULL
+  data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
   similarity_method: pearson
   debug_all_same_cols: Metadata_experiment_type
@@ -89,6 +90,24 @@ batch <- params$batch
 futile.logger::flog.info(glue("Batch = {batch}"))
 ```
 
+
+```{r}
+data_level <- params$data_level
+
+data_level_code <- 
+  case_when(
+    data_level == "normalized_feature_select_outlier_trimmed" ~ "4b",
+    data_level == "spherized" ~ "4c",
+    TRUE ~ NA_character_
+  )
+
+stopifnot(!is.na(data_level_code))
+
+futile.logger::flog.info(glue("Data level = {data_level}"))
+futile.logger::flog.info(glue("Data level code = {data_level_code}"))
+```
+
+
 ```{r}
 similarity_method <- params$similarity_method
 futile.logger::flog.info(glue("Similarity method = {similarity_method}"))
@@ -96,11 +115,10 @@ futile.logger::flog.info(glue("Similarity method = {similarity_method}"))
 
 
 ```{r}
-filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
+filename_prefix <- glue("{batch}_{comparision_tag}_{data_level}{norm_suffix}")
 ```
 
-
-# Load similarity matrix on Level 4b
+# Load similarity matrix
 
 ```{r}
 futile.logger::flog.info("Loading similarity ...")

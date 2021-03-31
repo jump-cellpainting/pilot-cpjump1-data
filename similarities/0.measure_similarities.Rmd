@@ -18,6 +18,7 @@ params:
       Metadata_cell_line: U2OS
       Metadata_experiment_condition: Standard
   all_same_cols: !r NULL
+  data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
   similarity_method: pearson
   debug_all_same_cols: Metadata_experiment_type
@@ -89,13 +90,29 @@ futile.logger::flog.info(glue("Batch = {batch}"))
 ```
 
 ```{r}
-filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
+data_level <- params$data_level
+
+data_level_code <- 
+  case_when(
+    data_level == "normalized_feature_select_outlier_trimmed" ~ "4b",
+    data_level == "spherized" ~ "4c",
+    TRUE ~ NA_character_
+  )
+
+stopifnot(!is.na(data_level_code))
+
+futile.logger::flog.info(glue("Data level = {data_level}"))
+futile.logger::flog.info(glue("Data level code = {data_level_code}"))
 ```
 
-# Load Level 4b profiles (whole-plate normalized)
+```{r}
+filename_prefix <- glue("{batch}_{comparision_tag}_{data_level}{norm_suffix}")
+```
+
+# Load profiles
 
 ```{r}
-filename_prefix_profiles <- glue("{batch}_all_normalized_feature_select_outlier_trimmed{norm_suffix}")
+filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
 
 parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
 
@@ -117,14 +134,7 @@ profiles %>%
   tally()
 ```
 
-# Annotate negcon
-
-This chunk can be dropped when the metadata is fixed upstream
-
-```{r}
-
-```
-
+# Inspect negcon annotations
 
 ```{r}
 profiles %>%
@@ -142,7 +152,7 @@ profiles %>%
 ```
 
 
-# Compute similarity matrix on Level 4b
+# Compute similarity matrix
 
 ```{r}
 futile.logger::flog.info("Calculating similarity ...")
