@@ -13,11 +13,21 @@ output:
     df_print: paged
 params:
   batch: "2020_11_04_CPJUMP1"
-  experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_experiment_condition = "Standard")
+  experiment: 
+    value:
+      Metadata_cell_line: U2OS
+      Metadata_experiment_condition: Standard
   all_same_cols: !r NULL
+  data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
-  debug_all_same_cols: !r c("Metadata_experiment_type")
-  debug_experiment: !r data.frame(Metadata_cell_line = "U2OS", Metadata_timepoint = "48", Metadata_experiment_type = "Compound", Metadata_experiment_condition = "Standard")
+  similarity_method: pearson
+  debug_all_same_cols: Metadata_experiment_type
+  debug_experiment: 
+    value:
+      Metadata_cell_line: U2OS
+      Metadata_timepoint: "48"
+      Metadata_experiment_type: Compound
+      Metadata_experiment_condition: Standard
 ---
 
 # Setup
@@ -27,16 +37,12 @@ library(magrittr)
 library(tidyverse)
 library(glue)
 library(arrow)
+library(matric)
 ```
 
 
 ```{r}
-source("https://raw.githubusercontent.com/shntnu/grit-benchmark/47ae58e83e3db85eeaf43b51cfe0dc5a187410cb/R/cytominer-eval.R")
-```
-
-
-```{r}
-experiment <- params$experiment
+experiment <- as.data.frame(params$experiment)
 
 if(!is.null(experiment)) {
   experiment_tag <-
@@ -84,13 +90,29 @@ futile.logger::flog.info(glue("Batch = {batch}"))
 ```
 
 ```{r}
-filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
+data_level <- params$data_level
+
+data_level_code <- 
+  case_when(
+    data_level == "normalized_feature_select_outlier_trimmed" ~ "4b",
+    data_level == "spherized" ~ "4c",
+    TRUE ~ NA_character_
+  )
+
+stopifnot(!is.na(data_level_code))
+
+futile.logger::flog.info(glue("Data level = {data_level}"))
+futile.logger::flog.info(glue("Data level code = {data_level_code}"))
 ```
 
-# Load Level 4b profiles (whole-plate normalized)
+```{r}
+filename_prefix <- glue("{batch}_{comparision_tag}_{data_level}{norm_suffix}")
+```
+
+# Load profiles
 
 ```{r}
-filename_prefix_profiles <- glue("{batch}_all_normalized_feature_select_outlier_trimmed{norm_suffix}")
+filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
 
 parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
 
@@ -112,14 +134,7 @@ profiles %>%
   tally()
 ```
 
-# Annotate negcon
-
-This chunk can be dropped when the metadata is fixed upstream
-
-```{r}
-
-```
-
+# Inspect negcon annotations
 
 ```{r}
 profiles %>%
@@ -137,19 +152,21 @@ profiles %>%
 ```
 
 
-# Compute similarity matrix on Level 4b
+# Compute similarity matrix
 
 ```{r}
 futile.logger::flog.info("Calculating similarity ...")
 
-sim_df <- sim_calculate(profiles)
+similarity_method <- params$similarity_method
+
+sim_df <- sim_calculate(profiles, method = similarity_method)
 
 if(!is.null(all_same_cols)) {
   sim_df %<>% sim_all_same(all_same_cols = all_same_cols)
 }
 
 parquet_file <- 
-  glue("{batch}/{filename_prefix}_sim.parquet")
+  glue("{batch}/{filename_prefix}_sim_{similarity_method}.parquet")
 
 sim_df %>%
   sim_write(parquet_file)
