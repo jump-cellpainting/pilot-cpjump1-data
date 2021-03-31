@@ -19,6 +19,7 @@ params:
       Metadata_experiment_condition: Standard
   all_same_cols: !r NULL
   normalization: whole_plate
+  similarity_method: pearson
   debug_all_same_cols: Metadata_experiment_type
   debug_experiment: 
     value:
@@ -87,6 +88,11 @@ batch <- params$batch
 futile.logger::flog.info(glue("Batch = {batch}"))
 ```
 
+```{r}
+similarity_method <- params$similarity_method
+futile.logger::flog.info(glue("Similarity method = {similarity_method}"))
+```
+
 
 ```{r}
 filename_prefix <- glue("{batch}_{comparision_tag}_normalized_feature_select_outlier_trimmed{norm_suffix}")
@@ -104,7 +110,7 @@ metric_set_names <- c(
 metric_sets <- 
   map(metric_set_names, function(metric_set) {
   parquet_file <-
-    glue("{batch}/{filename_prefix}_{metric_set}.parquet")
+    glue("{batch}/{filename_prefix}_sim_{similarity_method}_{metric_set}.parquet")
   
   futile.logger::flog.info(glue("Reading {parquet_file} ..."))
   
@@ -115,7 +121,7 @@ metric_sets <-
 names(metric_sets) <- metric_set_names
 
 parquet_file <-
-  glue("{batch}/{filename_prefix}_sim_collated.parquet")
+  glue("{batch}/{filename_prefix}_sim_{similarity_method}_collated.parquet")
 
 futile.logger::flog.info(glue("Writing {parquet_file} ..."))
 

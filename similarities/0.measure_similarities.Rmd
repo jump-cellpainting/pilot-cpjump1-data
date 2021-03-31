@@ -19,6 +19,7 @@ params:
       Metadata_experiment_condition: Standard
   all_same_cols: !r NULL
   normalization: whole_plate
+  similarity_method: pearson
   debug_all_same_cols: Metadata_experiment_type
   debug_experiment: 
     value:
@@ -146,14 +147,16 @@ profiles %>%
 ```{r}
 futile.logger::flog.info("Calculating similarity ...")
 
-sim_df <- sim_calculate(profiles)
+similarity_method <- params$similarity_method
+
+sim_df <- sim_calculate(profiles, method = similarity_method)
 
 if(!is.null(all_same_cols)) {
   sim_df %<>% sim_all_same(all_same_cols = all_same_cols)
 }
 
 parquet_file <- 
-  glue("{batch}/{filename_prefix}_sim.parquet")
+  glue("{batch}/{filename_prefix}_sim_{similarity_method}.parquet")
 
 sim_df %>%
   sim_write(parquet_file)
