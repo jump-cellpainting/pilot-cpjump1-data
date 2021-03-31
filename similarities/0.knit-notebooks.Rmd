@@ -43,11 +43,17 @@ render_notebook <-
   }
 ```
 
+# Whole-plate z-scored
 
 ```{r}
+data_level <- "normalized_feature_select_outlier_trimmed"
+```
+
+
+```{r echo=FALSE}
 render_notebook(
   "1.measure_similarities.Rmd",
-  data_level = "normalized_feature_select_outlier_trimmed",
+  data_level = data_level,
   similarity_method = "pearson",
   Metadata_cell_line = "U2OS",
   Metadata_experiment_condition = "Standard"
@@ -58,7 +64,7 @@ render_notebook(
 ```{r echo=FALSE}
 render_notebook(
   "2.collate_similarities.Rmd",
-  data_level = "normalized_feature_select_outlier_trimmed",
+  data_level = data_level,
   similarity_method = "pearson",
   Metadata_cell_line = "U2OS",
   Metadata_experiment_condition = "Standard"
@@ -69,7 +75,46 @@ render_notebook(
 ```{r echo=FALSE}
 render_notebook(
   "3.inspect_similarities.Rmd",
-  data_level = "normalized_feature_select_outlier_trimmed",
+  data_level = data_level,
+  similarity_method = "pearson",
+  Metadata_cell_line = "U2OS",
+  Metadata_experiment_condition = "Standard"
+)
+```
+
+# Spherized
+
+```{r}
+data_level <- "spherized"
+```
+
+
+```{r echo=FALSE}
+render_notebook(
+  "1.measure_similarities.Rmd",
+  data_level = data_level,
+  similarity_method = "pearson",
+  Metadata_cell_line = "U2OS",
+  Metadata_experiment_condition = "Standard"
+)
+```
+
+
+```{r echo=FALSE}
+render_notebook(
+  "2.collate_similarities.Rmd",
+  data_level = data_level,
+  similarity_method = "pearson",
+  Metadata_cell_line = "U2OS",
+  Metadata_experiment_condition = "Standard"
+)
+```
+
+
+```{r echo=FALSE}
+render_notebook(
+  "3.inspect_similarities.Rmd",
+  data_level = data_level,
   similarity_method = "pearson",
   Metadata_cell_line = "U2OS",
   Metadata_experiment_condition = "Standard"
