@@ -30,6 +30,7 @@ library(magrittr)
 library(tidyverse)
 library(glue)
 library(arrow)
+library(matric)
 ```
 
 
@@ -64,6 +65,9 @@ profiles_collated_file <-
 profiles <-
   read_parquet(profiles_collated_file) %>%
   inner_join(experiment)
+
+variables <- 
+  str_subset(names(profiles), "Metadata_", negate = TRUE)
 ```
 
 From https://github.com/jump-cellpainting/pilot-cpjump1-analysis/issues/13#issuecomment-799779409
@@ -89,7 +93,6 @@ dmso_profiles %>%
 # Plot
 
 ```{r}
-
 dimred_profile <-
   function(profiles,
            method = "umap",
@@ -130,79 +133,60 @@ dimred_profile <-
 
 ```
 
-## Plot DMSOs
 
 ```{r}
 dmso_pca <- dimred_profile(dmso_profiles, method = "pca")
 
+sd_limit <- 20
+
 ggplot(dmso_pca,
-       aes(PC1, PC2, color = Metadata_Plate)) + geom_point()
+       aes(PC1, PC2, 
+           color = Metadata_Plate)) + 
+  geom_point() +
+  coord_equal() +
+  geom_vline(xintercept = sd_limit) + 
+  geom_vline(xintercept = -sd_limit) + 
+  geom_hline(yintercept = sd_limit) + 
+  geom_hline(yintercept = -sd_limit)
+  
+
+ggplot(dmso_pca %>% filter(abs(PC1) < sd_limit & abs(PC2) < sd_limit),
+       aes(PC1, PC2, color = Metadata_Plate)) + 
+  geom_point() + 
+  coord_equal()
 ```
 
+# Clean 
 
-```{r}
-variables <-
-  names(dmso_profiles) %>% str_subset("Metadata_", negate = TRUE)
-
-dmso_spherized <-
-  cytominer::whiten(
-    population = dmso_profiles,
-    variables = variables,
-    sample = dmso_profiles,
-    regularization_param = 1e-5
-  )
-
-dmso_pca <- dimred_profile(dmso_spherized, method = "pca")
-
-ggplot(dmso_pca %>% filter(PC1 > -1 & PC2 < 2),
-       aes(PC1, PC2, color = Metadata_Plate)) + geom_point()
-
-```
-
+Clean profiles based on plots
 
 ```{r}
 dmso_outliers <-
-  dmso_pca %>% filter(PC1 < -1 |
-                        PC2 > 2) %>% select(Metadata_Plate, Metadata_Well)
+  dmso_pca %>% 
+  filter(abs(PC1) >= sd_limit | abs(PC2) >= sd_limit) %>% 
+  select(Metadata_Plate, Metadata_Well)
 
-dmso_cleaned_profiles <- dmso_profiles %>% anti_join(dmso_outliers)
+profiles <- 
+  profiles %>% 
+  anti_join(dmso_outliers)
 
-dmso_cleaned_spherized_profiles <-
-  cytominer::whiten(
-    population = dmso_cleaned_profiles,
-    variables = variables,
-    sample = dmso_cleaned_profiles,
-    regularization_param = 1e-5
-  )
+dmso_profiles <- 
+  profiles %>%
+  filter(Metadata_control_type == "negcon")
 
-dmso_cleaned_pca <- dimred_profile(dmso_cleaned_spherized_profiles, method = "pca")
-
-ggplot(dmso_cleaned_pca,
-       aes(PC1, PC2, color = Metadata_Plate)) + geom_point()
-
+dmso_profiles %>%
+  group_by(Metadata_Plate) %>%
+  tally()
 ```
-
 
 # Transform
 
-```{r}
+```{r eval=FALSE}
 profiles_spherized <-
   cytominer::whiten(
     population = profiles,
     variables = variables,
     sample = dmso_profiles,
-    regularization_param = 1e-5
-  )
-
-ggplot(profiles_spherized %>% sample_frac(1),
-       aes(PC1, PC2, color = Metadata_Plate)) + geom_point() +
-  ggtitle(glue("{experiment_tag}: spherizing using original data"))
-
-profiles_spherized <-
-  cytominer::whiten(
-    population = profiles,
-    variables = variables,
-    sample = dmso_cleaned_profiles,
     regularization_param = 1e-5
   )
 
@@ -214,7 +198,7 @@ ggplot(profiles_spherized %>% sample_frac(1),
 
 # Save
 
-```{r}
+```{r eval=FALSE}
 profiles_spherized_collated_file <- 
   glue("{batch}/{batch}_{experiment_tag}_spherized.parquet")
 
