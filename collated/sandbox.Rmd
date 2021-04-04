@@ -1,0 +1,553 @@
+---
+title: "Spherize sandbox"
+output: html_notebook
+---
+
+# ---- Archive  ---- 
+# Inspect
+
+## Report mean and s.d. of PCs after spherizing
+
+```{r}
+report_stats <- function(population, variables, alpha) {
+  sample_data <- sample %>%
+    dplyr::select(all_of(variables)) %>%
+    as.matrix()
+  
+  population_data <- population %>%
+    dplyr::select(all_of(variables)) %>%
+    as.matrix()
+  
+  # mean of sample
+  sample_mean <- colMeans(sample_data)
+  
+  # covariance of sample
+  sample_cov <- cov(sample_data)
+  
+  # eigen decomposition \Sigma = E * \Lambda * E'
+  eig_decomp <- eigen(sample_cov)
+  
+  # compute sphering transformation, which is {\Lambda + \epsilon}^.5 x E'
+  W <- diag((eig_decomp$values + 10**(-alpha)) ^ -0.5) %*%
+    t(eig_decomp$vectors)
+  
+  # apply sphering transformation, which is (X - \mu) * W'
+  transformed_population_data <-
+    sweep(population_data, 2, sample_mean) %*% t(W)
+  
+  colnames(transformed_population_data) <- paste0("PC", 1:NCOL(W))
+  
+  transformed_population_data <- 
+    as.data.frame(transformed_population_data)
+  
+  sd_df <- 
+    transformed_population_data %>%
+    summarise(across(everything(), mean)) %>%
+    pivot_longer(everything(), names_to = "PC", values_to = "pc_mean")
+
+  mean_df <- 
+    transformed_population_data %>%
+    summarise(across(everything(), sd)) %>%
+    pivot_longer(everything(), names_to = "PC", values_to = "pc_sd")
+  
+  df <- inner_join(sd_df, mean_df, by = c("PC"))
+  
+  df %>%
+    mutate(PC = as.integer(str_remove_all(PC, "PC"))) %>%
+    mutate(epsilon = 10**(-alpha))
+}
+```
+
+
+```{r}
+population <- profiles
+sample <- dmso_profiles
+n_dmso <- nrow(dmso_profiles)
+n_features <- ncol(dmso_profiles)
+variables <- names(profiles) %>% str_subset("Metadata_", negate = TRUE)
+```
+
+Report across different values of $\epsilon=10^{-\alpha}$)
+
+```{r}
+alpha <- seq(-1, 10)
+
+spectrum_stats <- 
+  alpha %>%
+  map_df(~report_stats(population, variables, .))
+```
+
+### All PCs
+
+```{r}
+ggplot(spectrum_stats,
+       aes(PC, pc_mean)) + 
+  geom_line() + 
+  geom_vline(xintercept = n_dmso, color = "red") + 
+  geom_vline(xintercept = n_features, color = "blue") + 
+  facet_wrap(~epsilon, scales = "free_y") +
+  ggtitle("mean of spherized features across different values of epsilon", 
+          subtitle = "red = no. of DMSO; blue = no. of features")
+
+ggplot(spectrum_stats,
+       aes(PC, pc_sd)) + 
+  geom_line() + 
+  geom_vline(xintercept = n_dmso, color = "red") + 
+  geom_vline(xintercept = n_features, color = "blue") + 
+  facet_wrap(~epsilon, scales = "free_y") +
+  ggtitle("s.d. of spherized features across different values of epsilon", 
+          subtitle = "red = no. of DMSO; blue = no. of features")
+  
+```
+
+### All PCs < number of DMSOs
+
+```{r}
+ggplot(spectrum_stats %>% filter(PC < n_dmso),
+       aes(PC, pc_mean)) + 
+  geom_line() + 
+  geom_vline(xintercept = n_dmso, color = "red") + 
+  geom_vline(xintercept = n_features, color = "blue") + 
+  facet_wrap(~epsilon) +
+  ggtitle("mean of spherized features across different values of epsilon", 
+          subtitle = "red = no. of DMSO; blue = no. of features")
+
+ggplot(spectrum_stats %>% filter(PC < n_dmso),
+       aes(PC, pc_sd)) + 
+  geom_line() + 
+  geom_vline(xintercept = n_dmso, color = "red") + 
+  geom_vline(xintercept = n_features, color = "blue") + 
+  facet_wrap(~epsilon) +
+  ggtitle("s.d. epsilon spherized features across different values of epsilon", 
+          subtitle = "red = no. of DMSO; blue = no. of features")
+```
+
+
+
+## Report total variance
+
+Define function to get variance of spherized data matrix
+
+```{r}
+get_variance <- function(profiles) {
+  cov(
+    profiles %>%
+      filter(Metadata_broad_sample == "DMSO") %>%
+      select(matches("^PC")) %>%
+      as.matrix()
+  ) %>%
+    diag() %>%
+    t() %>%
+    as.data.frame() %>%
+    gather(dimension, value) %>%
+    mutate(dimension = str_replace(dimension, "PC", "")) %>%
+    mutate(dimension = as.integer(dimension)) 
+}
+```
+
+Whiten the entire dataset using DMSO distribution as a reference
+
+```{r}
+# specify regularization parameter for whitening transformation
+
+whiten_alpha_neg_log_10 <- 1
+
+whiten_alpha <- 10**(-whiten_alpha_neg_log_10)
+
+profiles_whitened <-
+  profiles %>%
+  cytominer::whiten(colnames(profiles) %>% str_subset("^Nuclei_|^Cells_|^Cytoplasm_"), 
+                    profiles %>% filter(Metadata_broad_sample == "DMSO"), 
+                    whiten_alpha)
+```
+
+Calculate variance of each dimension of whitened data
+
+```{r}
+variance <-  get_variance(profiles_whitened)
+```
+
+Estimate variance of each dimension of whitened data as:
+$$\hat{\sigma_i} = \frac{\sigma_i}{\sigma_i + \epsilon}$$ 
+
+```{r}
+estimated_whitened_variance <-
+  profiles %>% 
+  filter(Metadata_broad_sample == "DMSO") %>%
+  select(matches("^Nuclei_|^Cells_|^Cytoplasm_")) %>%
+  as.matrix() %>%
+  cov() %>% 
+  eigen(only.values = TRUE) %>%
+  extract2("values")
+  
+estimated_whitened_variance <- 
+  data.frame(variance = estimated_whitened_variance) %>%
+  mutate(dimension = 1:n()) %>%
+  mutate(estimated_whitened_variance = variance / (variance + whiten_alpha)) %>%
+  select(dimension, estimated_whitened_variance)
+```
+
+Are the estimated and real variances the same?
+
+```{r}
+inner_join(estimated_whitened_variance,
+           variance, by = c("dimension")) %>%
+  ggplot(aes(value, estimated_whitened_variance)) + 
+  geom_point() + 
+  geom_abline(slope = 1) +
+  coord_equal()
+```
+
+Plot the variances of each dimension of the whitened data. 
+
+```{r}
+n_dmso <-
+  profiles_whitened %>%
+  filter(Metadata_broad_sample == "DMSO") %>% 
+  nrow()
+```
+
+
+```{r}
+plot_spectrum <- 
+  function(whiten_alpha_neg_log_10) {
+  whiten_alpha <- 10**(-whiten_alpha_neg_log_10)
+  
+  profiles_whitened <-
+    profiles %>%
+    cytominer::whiten(colnames(profiles) %>% str_subset("^Nuclei_|^Cells_|^Cytoplasm_"), 
+                      profiles %>% filter(Metadata_broad_sample == "DMSO"), 
+                      whiten_alpha)
+  
+  variance <-  get_variance(profiles_whitened)
+
+  p <- 
+    ggplot(variance, 
+         aes(dimension, value)) + 
+    geom_line(alpha = 0.5) + 
+    geom_vline(aes(xintercept = n_dmso), color = "red", alpha = 0.5) +
+    geom_vline(aes(xintercept = n_features), color = "blue", alpha = 0.5) +
+    ylim(c(0, 1)) +
+    xlab("dimension #") +
+    ggtitle(glue("Variance of DMSO wells of {experiment_tag}, after whitening"), 
+            subtitle = glue("-log 10 alpha = {whiten_alpha_neg_log_10}. Red line = no. of DMSOs. Blue line = dims. of feature space."))
+  
+  ggsave(glue("output/variance_{whiten_alpha_neg_log_10}.png"), p, width = 8, height = 4) 
+  
+  p
+}
+```
+
+
+```{r}
+plot_spectrum(-1)
+plot_spectrum(0)
+plot_spectrum(1)
+plot_spectrum(2)
+plot_spectrum(3)
+plot_spectrum(4)
+plot_spectrum(5)
+plot_spectrum(6)
+plot_spectrum(7)
+```
+
+
+# Preprocess
+
+## Center the data
+
+To keep calculations simple
+
+```{r}
+x <- scale(drop_annotation(dmso_profiles), center = TRUE, scale = FALSE)
+n <- nrow(x)
+d <- ncol(x)
+
+if (is.null(params$dimensionality) | is.infinite(params$dimensionality)) {
+  k <- d
+} else {
+  k <- params$dimensionality
+}
+
+x <- x[,sample(ncol(x), k)]
+dim(x)
+```
+
+# Verify PCA / SVD relationship
+
+```{r}
+xpca <- prcomp(x)
+xp1 <- xpca$x
+
+xsvd <- svd(x, nu = n, nv = d)
+xp2 <- xsvd$u[,1:min(n, k)] %*% diag(xsvd$d)
+```
+
+The rows of the two transformed matrices (from PCA, SVD) should be the same (should see a diagonal matrix here)
+
+```{r}
+cmat <- cor(xp1, xp2)
+corrplot::corrplot(cmat, tl.pos="n", method = "color")
+```
+
+These values should be very small
+
+```{r}
+xpdiff <- apply(xp1-xp2, 1, mean) / apply(abs(xp1), 1, mean)
+hist(xpdiff)
+```
+
+The sdev of the principal components should be equal to the (scaled) singular values
+
+```{r}
+svd_pca <- data.frame(ssvd = xsvd$d / sqrt(n-1), spca = xpca$sdev)
+
+svd_pca_lm <- 
+lm(
+  data = svd_pca,
+  formula = ssvd ~ spca
+)
+
+summary(svd_pca_lm)
+```
+
+The difference should be very small
+
+```{r}
+xsvs <- xsvd$d / sqrt(n-1)
+
+svdiff <- mean( xsvs - xpca$sdev ) / mean ( abs(xpca$sdev) )
+svdiff
+```
+
+Verify definition of proportion of variance
+
+```{r}
+varprop_pca <- summary(xpca)$importance["Proportion of Variance",]
+varprop_svd <- (xsvs**2) / sum(xsvs**2)
+
+all.equal(varprop_svd, varprop_svd)
+
+varcumprop_pca <- summary(xpca)$importance["Cumulative Proportion",]
+varcumprop_svd <- cumsum((xsvs**2) / sum(xsvs**2))
+
+all.equal(varcumprop_svd, varcumprop_svd)
+
+```
+
+```{r}
+plot(varcumprop_svd)
+```
+
+# Pick thresholds
+
+How many PCs explain 95% of variance?
+
+```{r}
+q <- which.max(varcumprop_svd > 0.95)
+q
+```
+
+We should project the data into the orthogonal subspace of $D_{1:p}^{-1}V_{1:p}^{T}$ where $p$ is the number of PCs that explain 95% of the variance.
+
+```{r}
+dim(diag(xsvd$d))
+dim(xsvd$v)
+```
+
+```{r}
+plot(xsvd$d)
+```
+
+```{r}
+if ((length(xsvd$d)-1) < k) {
+  message("padding")
+  dpad <- rep(1, k)
+  dpad[1:(length(xsvd$d)-1)] <- xsvd$d[1:(length(xsvd$d)-1)]
+} else {
+  message("no padding")
+  dpad <- xsvd$d
+}
+plot(dpad)
+
+dpadinv <- 1 / dpad
+
+min(dpad)
+```
+
+```{r}
+plot(dpadinv)
+abline(v = q, col="red")
+```
+
+```{r}
+vdi <- t(t(xsvd$v) * dpadinv)
+dim(vdi)
+plot(apply(vdi, 2, sd))
+abline(v = q, col="red")
+```
+
+```{r}
+plot(sqrt(n-1) * apply(xsvd$u, 2, sd))
+```
+
+```{r}
+vdiq <- vdi[,q:k]
+dim(vdiq)
+plot(apply(vdiq, 2, sd))
+```
+
+```{r}
+dim(x)
+dim(vdiq)
+dim(x %*% vdiq)
+```
+
+```{r}
+xw4_a <- x %*% vdiq
+```
+
+
+
+```{r}
+# Using eigen decomp of covariance
+eps <- 0
+xeig <- eigen(cov(x))
+xw1 <- x %*% xeig$vectors %*% diag((pmax(xeig$values, 1e-10) + eps)^-0.5)
+
+# using SVD
+xsvd <- svd(x)
+xw2 <- xsvd$u
+
+# Using PCA
+xpca <- prcomp(x)
+xw3 <- xpca$x %*% diag(1/xpca$sdev)
+```
+
+```{r}
+vdi <- xsvd$v %*% diag(1/xsvd$d)
+xw2_a <- x %*% vdi
+all.equal(xw2_a, xw2)
+dim(xsvd$v)
+```
+
+
+```{r}
+dim(xw2_a)
+dim(xw2)
+```
+
+
+```{r}
+dim(xw1)
+dim(xw2)
+dim(xw3)
+```
+
+
+```{r}
+cmat <- cor(xw1[,1:ncol(xw2)], xw2)
+corrplot::corrplot(cmat, tl.pos="n", method = "color")
+plot(diag(cmat))
+```
+
+```{r}
+cmat <- cor(xw2, xw4)
+dim(cmat)
+corrplot::corrplot(cmat, tl.pos="n", method = "color")
+plot(diag(cmat[1:n,1:n]))
+```
+
+
+```{r}
+cmat <- cor(xw2, xw3)
+corrplot::corrplot(cmat, tl.pos="n", method = "color")
+plot(diag(cmat))
+```
+
+
+```{r}
+plot_na <- function(s) plot(apply(is.na(s), 2, sum))
+
+plot_na(xw1)
+plot_na(xw2)
+plot_na(xw3)
+plot_na(xw4)
+```
+
+
+```{r}
+plot_na(xeig$vectors)
+plot_na(diag(xeig$values))
+plot(xeig$values)
+plot(xeig$values[nrow(x):length(xeig$values)])
+```
+
+
+# More archive
+
+
+```{r}
+n_dim <- 15
+n_points <- 10
+regularization_param <- 1
+
+data <- matrix(rnorm(n_points * n_dim), n_points, n_dim)
+data <-
+  data + abs(matrix(rnorm(n_points * n_dim), n_points, n_dim)) * 50
+data <- as.data.frame(data)
+
+variables <- names(data)
+
+sample <- data
+population <- data
+```
+
+
+```{r}
+sample_data <- sample %>%
+  dplyr::select(variables) %>%
+  as.matrix()
+
+population_data <- population %>%
+  dplyr::select(variables) %>%
+  as.matrix()
+
+# mean of sample
+sample_mean <- colMeans(sample_data)
+
+# covariance of sample
+sample_cov <- cov(sample_data)
+
+# eigen decomposition \Sigma = E * \Lambda * E'
+eig_decomp <- eigen(sample_cov)
+
+# compute sphering transformation, which is {\Lambda + \epsilon}^.5 x E'
+W <- diag((eig_decomp$values + regularization_param) ^ -0.5) %*%
+  t(eig_decomp$vectors)
+
+# apply sphering transformation, which is (X - \mu) * W'
+transformed_population_data <-
+  sweep(population_data, 2, sample_mean) %*% t(W)
+
+colnames(transformed_population_data) <- paste0("PC", 1:NCOL(W))
+
+transformed_population_data <- 
+  as.data.frame(transformed_population_data)
+
+transformed_population <-
+  dplyr::bind_cols(list(
+    population %>% dplyr::select(-dplyr::one_of(variables)),
+    transformed_population_data
+  ))
+
+transformed_population
+```
+
+
+```{r}
+transformed_population %>%
+  pivot_longer(everything()) %>%
+  mutate(name = sprintf("PC%02d", as.integer(str_remove_all(name, "PC")))) %>%
+  ggplot(aes(name, value)) + geom_boxplot()
+```
