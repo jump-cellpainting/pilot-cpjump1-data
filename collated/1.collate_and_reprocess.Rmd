@@ -1,0 +1,843 @@
+---
+title: "Collate and reprocess CPJUMP1 profiles"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: 2020_11_04_CPJUMP1
+---
+
+This notebook does 3 things
+
+1. Produces collated versions of the `2020_11_04_CPJUMP1` Level 3 (`_augmented`) and Level 4a (`_normalized`) as [Parquet](https://parquet.apache.org/) files.
+2. Recomputes Level 4b (`_normalized_feature_select`) on the collated Level 4a file.
+3. Computes another version of the Level 4b file (`normalized_feature_select_outlier_trimmed`) files with the outliers removed, using bespoke logic for this dataset. This should be done directly in the profiling recipe in the future, once we have figured out how to handle outliers better.
+
+The notebook generates several intermediate parquet files for convenience, but they are not committed to the repository.
+
+The notebook also requires executing a `pycytominer` script by hand (hacky! but reproducible)
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+```{r}
+experiment_filter <- NULL
+```
+
+```{r}
+batch <- params$batch
+```
+
+```{r}
+overwrite_level_3_profiles <- FALSE
+overwrite_level_4a_profiles <- FALSE
+overwrite_level_4b_profiles <- FALSE
+```
+
+```{r}
+mapping <-
+  tribble(
+    ~Metadata_Plate, ~Metadata_cell_line, ~Metadata_timepoint, ~Metadata_experiment_type, ~Metadata_experiment_condition, ~Metadata_replicate_id,
+    "BR00118050", "A549", "96", "ORF", "Standard", 1,
+    "BR00117006", "A549", "96", "ORF", "Standard", 2,
+    "BR00118039", "U2OS", "96", "ORF", "Standard", 1,
+    "BR00118040", "U2OS", "96", "ORF", "Standard", 2,
+    "BR00117020", "A549", "48", "ORF", "Standard", 1,
+    "BR00117021", "A549", "48", "ORF", "Standard", 2,
+    "BR00117022", "U2OS", "48", "ORF", "Standard", 1,
+    "BR00117023", "U2OS", "48", "ORF", "Standard", 2,
+    "BR00118041", "A549", "96", "CRISPR", "Standard", 1,
+    "BR00118042", "A549", "96", "CRISPR", "Standard", 2,
+    "BR00118043", "A549", "96", "CRISPR", "Standard", 3,
+    "BR00118044", "A549", "96", "CRISPR", "Standard", 4,
+    "BR00118045", "U2OS", "96", "CRISPR", "Standard", 1,
+    "BR00118046", "U2OS", "96", "CRISPR", "Standard", 2,
+    "BR00118047", "U2OS", "96", "CRISPR", "Standard", 3,
+    "BR00118048", "U2OS", "96", "CRISPR", "Standard", 4,
+    "BR00117003", "A549", "144", "CRISPR", "Standard", 1,
+    "BR00117004", "A549", "144", "CRISPR", "Standard", 2,
+    "BR00117005", "A549", "144", "CRISPR", "Standard", 3,
+    "BR00117000", "A549", "144", "CRISPR", "Standard", 4,
+    "BR00116997", "U2OS", "144", "CRISPR", "Standard", 1,
+    "BR00116998", "U2OS", "144", "CRISPR", "Standard", 2,
+    "BR00116999", "U2OS", "144", "CRISPR", "Standard", 3,
+    "BR00116996", "U2OS", "144", "CRISPR", "Standard", 4,
+    "BR00116991", "A549", "24", "Compound", "Standard", 1,
+    "BR00116992", "A549", "24", "Compound", "Standard", 2,
+    "BR00116993", "A549", "24", "Compound", "Standard", 3,
+    "BR00116994", "A549", "24", "Compound", "Standard", 4,
+    "BR00116995", "U2OS", "24", "Compound", "Standard", 1,
+    "BR00117024", "U2OS", "24", "Compound", "Standard", 2,
+    "BR00117025", "U2OS", "24", "Compound", "Standard", 3,
+    "BR00117026", "U2OS", "24", "Compound", "Standard", 4,
+    "BR00117017", "A549", "48", "Compound", "Standard", 1,
+    "BR00117019", "A549", "48", "Compound", "Standard", 2,
+    "BR00117015", "A549", "48", "Compound", "Standard", 3,
+    "BR00117016", "A549", "48", "Compound", "Standard", 4,
+    "BR00117012", "U2OS", "48", "Compound", "Standard", 1,
+    "BR00117013", "U2OS", "48", "Compound", "Standard", 2,
+    "BR00117010", "U2OS", "48", "Compound", "Standard", 3,
+    "BR00117011", "U2OS", "48", "Compound", "Standard", 4,
+    "BR00118049", "A549", "96", "ORF", "Blasticidin", 1,
+    "BR00117002", "A549", "144", "CRISPR", "Puromycin", 1,
+    "BR00117001", "A549", "144", "CRISPR", "Puromycin", 2,
+    "BR00117054", "A549", "48", "Compound", "p20pc_Seed_Density", 1,
+    "BR00117055", "A549", "48", "Compound", "p20pc_Seed_Density", 2,
+    "BR00117008", "A549", "48", "Compound", "m20pc_Seed_Density", 1,
+    "BR00117009", "A549", "48", "Compound", "m20pc_Seed_Density", 2,
+    "BR00117052", "A549", "48", "Compound", "Cas9", 1,
+    "BR00117053", "A549", "48", "Compound", "Cas9", 2,
+    "BR00117050", "A549", "48", "Compound", "Cas9", 3,
+    "BR00117051", "A549", "48", "Compound", "Cas9", 4
+  )
+```
+
+Read additional metadata
+
+```{r}
+
+basedir <- "https://raw.githubusercontent.com/jump-cellpainting/JUMP-Target/40838ab860ee9b872a9993105d5b97d6bef2dab5/"
+
+compound_metadata <-
+  read_tsv(
+    glue("{basedir}/JUMP-Target_compound_metadata.tsv"),
+    col_types = cols_only(broad_sample = col_character(),
+                          pert_iname = col_character(),
+                          pubchem_cid = col_character(),
+                          InChIKey = col_character())
+  ) %>%
+  select(Metadata_broad_sample = broad_sample,
+         Metadata_pert_iname = pert_iname,
+         Metadata_pubchem_cid = pubchem_cid,
+         Metadata_InChIKey = InChIKey)
+
+crispr_metadata <-
+  read_tsv(
+    glue("{basedir}/JUMP-Target_crispr_metadata.tsv"),
+    col_types = cols_only(broad_sample = col_character(),
+                          negcon_control_type = col_character(),
+                          target_sequence = col_character())
+  ) %>%
+  select(Metadata_broad_sample = broad_sample,
+         Metadata_negcon_control_type = negcon_control_type,
+         Metadata_target_sequence = target_sequence)
+
+orf_metadata <-
+  read_tsv(
+    glue("{basedir}/JUMP-Target_orf_metadata.tsv"),
+    col_types = cols_only(broad_sample = col_character())
+  ) %>%
+  select(Metadata_broad_sample = broad_sample)
+
+additional_metadata <-
+  list(ORF = orf_metadata,
+       CRISPR = crispr_metadata,
+       Compound = compound_metadata)
+
+rm(list = c("orf_metadata", "crispr_metadata", "compound_metadata"))
+```
+
+coltypes map
+
+```{r}
+col_types_map <-
+  list(
+    ORF = cols(
+      .default = col_double(),
+      Metadata_plate_map_name = col_character(),
+      Metadata_broad_sample = col_character(),
+      Metadata_Plate = col_character(),
+      Metadata_Well = col_character(),
+      Metadata_genes = col_character(),
+      Metadata_pert_type = col_character(),
+      Metadata_control_type = col_character(),
+      Metadata_Assay_Plate_Barcode = col_character(),
+      Metadata_Plate_Map_Name = col_character()
+    ),
+    CRISPR = cols(
+      .default = col_double(),
+      Metadata_plate_map_name = col_character(),
+      Metadata_broad_sample = col_character(),
+      Metadata_Plate = col_character(),
+      Metadata_Well = col_character(),
+      Metadata_genes = col_character(),
+      Metadata_pert_type = col_character(),
+      Metadata_control_type = col_character(),
+      Metadata_Assay_Plate_Barcode = col_character(),
+      Metadata_Plate_Map_Name = col_character()
+    ),
+    Compound = cols(
+      .default = col_double(),
+      Metadata_plate_map_name = col_character(),
+      Metadata_broad_sample = col_character(),
+      Metadata_mg_per_ml = col_double(),
+      Metadata_mmoles_per_liter = col_double(),
+      Metadata_solvent = col_character(),
+      Metadata_Plate = col_character(),
+      Metadata_Well = col_character(),
+      Metadata_target = col_character(),
+      Metadata_pert_type = col_character(),
+      Metadata_control_type = col_character(),
+      Metadata_Assay_Plate_Barcode = col_character(),
+      Metadata_Plate_Map_Name = col_character()
+    )
+  )
+
+col_types_master <- cols(
+  .default = col_double(),
+  Metadata_plate_map_name = col_character(),
+  Metadata_broad_sample = col_character(),
+  Metadata_Plate = col_character(),
+  Metadata_Well = col_character(),
+  Metadata_genes = col_character(),
+  Metadata_pert_type = col_character(),
+  Metadata_control_type = col_character(),
+  Metadata_Assay_Plate_Barcode = col_character(),
+  Metadata_Plate_Map_Name = col_character(),
+  Metadata_cell_line = col_character(),
+  Metadata_timepoint = col_character(),
+  Metadata_experiment_type = col_character(),
+  Metadata_experiment_condition = col_character(),
+  Metadata_replicate_id = col_character(),
+  Metadata_gene = col_character(),
+  Metadata_negcon_control_type = col_character(),
+  Metadata_target_sequence = col_character(),
+  Metadata_mg_per_ml = col_double(),
+  Metadata_mmoles_per_liter = col_double(),
+  Metadata_solvent = col_character(),
+  Metadata_target = col_character(),
+  Metadata_pert_or_negcon = col_character(),
+  Metadata_pert_iname = col_character(),
+  Metadata_pubchem_cid = col_character(),
+  Metadata_InChIKey = col_character()
+)
+```
+
+
+```{r}
+experiment_spec_cols <- c(
+  "Metadata_cell_line",
+  "Metadata_timepoint",
+  "Metadata_experiment_type",
+  "Metadata_experiment_condition"
+)
+
+experiments <-
+  mapping %>%
+  distinct(across(all_of(experiment_spec_cols))) %>%
+  unite("Metadata_experiment_tag", everything(), remove = FALSE)
+```
+
+
+```{r}
+if(!is.null(experiment_filter)) {
+  experiments %<>% inner_join(experiment_filter)
+  
+  experiment_filter_tag <- paste(experiment_filter, collapse = "_")
+  
+  experiment_filter_tag <-
+    experiment_filter %>%
+    unite("experiment_filter_tag", everything()) %>%
+    pull("experiment_filter_tag") %>%
+    sort() %>%
+    paste(collapse = "_")
+} else {
+  experiment_filter_tag = "all"
+}
+futile.logger::flog.info(glue("Experiment tag = {experiment_filter_tag}")
+)
+```
+
+
+```{r}
+report_na_stats <- function(df) {
+  variables <- str_subset(colnames(df), "^Metadata_", negate = T)
+  
+  df %>%
+    summarise(across(all_of(variables), ~ any(is.na(.)))) %>%
+    pivot_longer(everything(), values_to = "is_na_feature") %>%
+    group_by(is_na_feature) %>%
+    tally() %>%
+    ungroup() %>%
+    pivot_wider(
+      names_from = "is_na_feature",
+      values_from = "n",
+      names_prefix = "is_na_"
+    ) %>%
+    print()
+}
+```
+
+
+```{r}
+find_outlier_variables <-
+  function(df,
+           outlier_variable_value_threshold = 20,
+           outlier_well_frac_threshold_all_plates = .05,
+           outlier_well_frac_threshold_per_plate = .05,
+           outlier_plate_frac_threshold = 0.05,
+           n_wells_per_plate = 384) {
+    df %<>% ungroup()
+    
+    variables <- str_subset(colnames(df), "^Metadata_", negate = T)
+    
+    n_plates <- df %>% distinct(Metadata_Plate) %>% nrow()
+    n_variables <- length(variables)
+    n_wells <- nrow(df)
+    
+    # function to flag a value as an outlier
+    outlier_well_count <- function(x)
+      sum(abs(x) > outlier_variable_value_threshold)
+    
+    # for each variable, count the number of outlier wells per plate
+    outlier_df <-
+      df %>%
+      group_by(Metadata_Plate) %>%
+      summarise(across(
+        all_of(variables),
+        list(outlier_well_count = outlier_well_count)
+      )) %>%
+      pivot_longer(-Metadata_Plate,
+                   values_to = "outlier_well_count",
+                   names_to = "variable_name")
+    
+    # variables that are outliers in more than `p` fraction of wells across all plates
+    # where `p` = outlier_well_frac_threshold_all_plates
+    outlier_variables_stat_well <-
+      outlier_df %>%
+      group_by(variable_name) %>%
+      summarize(outlier_well_frac = sum(outlier_well_count) / n_wells) %>%
+      filter(outlier_well_frac > outlier_well_frac_threshold_all_plates)
+    
+    # variables that are outliers in more than `p` fraction of plates
+    # a variable is an outlier in a plate if it is an outlier in more than `q`
+    # fraction of wells,
+    # where `p` = outlier_well_frac_threshold_all_plates
+    # where `q` = outlier_well_frac_threshold_per_plate
+    outlier_variables_stat_plate <-
+      outlier_df %>%
+      filter(outlier_well_count >
+               n_wells_per_plate *
+               outlier_well_frac_threshold_per_plate) %>%
+      group_by(variable_name) %>%
+      count(name = "outlier_plate_count") %>%
+      mutate(outlier_plate_frac = outlier_plate_count / n_plates) %>%
+      filter(outlier_plate_frac > outlier_plate_frac_threshold)
+    
+    outlier_variables <-
+      c(
+        outlier_variables_stat_well %>%
+          pull(variable_name),
+        outlier_variables_stat_plate %>%
+          pull(variable_name)
+      ) %>%
+      str_remove("_outlier_well_count")
+    
+    outlier_variables
+  }
+```
+
+
+```{r}
+collate_profiles <-
+  function(experiments,
+           batch,
+           profile_level,
+           mapping,
+           col_types_map,
+           additional_metadata,
+           experiment_spec_cols,
+           report_stats = TRUE,
+           overwrite_profiles = FALSE,
+           write_csvgz = FALSE,
+           load_if_present = FALSE,
+           experiment_filter_tag = "all",
+           additional_metadata_join_cols =
+             c("Metadata_broad_sample"),
+           mapping_join_cols =
+             c("Metadata_Plate")) {
+    parquet_all_experiments_file <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.parquet"
+      )
+    
+    csvgz_all_experiments_file <-
+      glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level}.csv.gz")
+    
+    if (!file.exists(parquet_all_experiments_file)) {
+      for (i in 1:nrow(experiments)) {
+        experiment <- experiments[i, ]
+        
+        experiment_tag <- experiment$Metadata_experiment_tag
+        
+        parquet_file <-
+          glue("../collated/{batch}/{batch}_{experiment_tag}_{profile_level}.parquet")
+        
+        futile.logger::flog.threshold(futile.logger::INFO)
+        
+        if (!file.exists(parquet_file) | overwrite_profiles) {
+          futile.logger::flog.info("Reading CSVs ...")
+          
+          profiles <-
+            mapping %>%
+            inner_join(experiment, by = experiment_spec_cols) %>%
+            pull("Metadata_Plate") %>%
+            map_df(function(plate) {
+              filename <-
+                glue("../profiles/{batch}/{plate}/{plate}_{profile_level}.csv.gz")
+              read_csv(filename, col_types = col_types_map[[experiment$Metadata_experiment_type]])
+            })
+          
+          futile.logger::flog.info(glue("Appending metadata ..."))
+          
+          profiles %<>% inner_join(mapping, by = mapping_join_cols)
+          
+          if (experiment$Metadata_experiment_type == "Compound") {
+            futile.logger::flog.info(glue("Modifying compound metadata ..."))
+            
+            profiles %<>% mutate(Metadata_broad_sample = ifelse(
+              is.na(Metadata_broad_sample),
+              "DMSO",
+              Metadata_broad_sample
+            ))
+            
+          }
+          
+          futile.logger::flog.info(glue("Appending more metadata ..."))
+          
+          profiles %<>%
+            left_join(additional_metadata[[experiment$Metadata_experiment_type]],
+                      by = additional_metadata_join_cols)
+          
+          futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+          
+          profiles %>%
+            select(matches("Metadata_"), everything()) %>%
+            write_parquet(parquet_file)
+          
+        } else {
+          futile.logger::flog.info(glue("{parquet_file} already exists."))
+        }
+      }
+      
+      if (!file.exists(csvgz_all_experiments_file) ||
+          !file.exists(parquet_all_experiments_file) ||
+          overwrite_profiles) {
+        profiles <-
+          experiments %>%
+          pull("Metadata_experiment_tag") %>%
+          map_df(function(experiment_tag) {
+            parquet_file <-
+              glue("../collated/{batch}/{batch}_{experiment_tag}_{profile_level}.parquet")
+            
+            futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+            
+            read_parquet(parquet_file)
+            
+          })
+        
+        
+        futile.logger::flog.info(glue("Fixing metadata ..."))
+        
+        profiles %<>%
+          mutate(Metadata_gene = Metadata_genes) %>%
+        mutate(Metadata_pert_type =
+                 case_when(
+                   !is.na(Metadata_pert_type) ~ Metadata_pert_type,
+                   TRUE ~ "empty"
+                 )) %>%
+          mutate(
+            Metadata_negcon_or_other =
+              case_when(
+                Metadata_pert_type == "control" &
+                  Metadata_control_type == "negcon" ~ "negcon",
+                Metadata_pert_type == "control" &
+                  Metadata_control_type != "negcon" ~ "pert",
+                Metadata_pert_type == "trt" ~ "pert",
+                Metadata_pert_type == "empty" ~ "empty"
+              )
+          )  %>%
+          mutate(Metadata_target =
+                   case_when(
+                     !is.na(Metadata_target) ~ Metadata_target,
+                     !is.na(Metadata_gene) ~ Metadata_gene
+                   )) %>%
+          mutate(
+            Metadata_pert_iname =
+              case_when(
+                !is.na(Metadata_pert_iname) ~ Metadata_pert_iname,
+                !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+                Metadata_negcon_or_other == "empty" ~ "empty"
+              )
+          ) %>%
+          mutate(
+            Metadata_broad_sample =
+              case_when(
+                !is.na(Metadata_broad_sample) ~ Metadata_broad_sample,
+                Metadata_negcon_or_other == "empty" ~ "empty"
+              )
+          ) %>%
+          rowwise() %>%
+          mutate(Metadata_negcon_control_type_trimmed =
+                   case_when(
+                     !is.na(Metadata_negcon_control_type) ~ str_split(Metadata_negcon_control_type, " ") [[1]][1]
+                   )) %>%
+          ungroup() %>%
+          mutate(
+            Metadata_target =
+              case_when(
+                Metadata_broad_sample == "empty" ~ "empty",
+                Metadata_negcon_or_other == "negcon" &
+                  Metadata_experiment_type == "CRISPR" ~ Metadata_negcon_control_type_trimmed,
+                TRUE ~ Metadata_target
+              )
+          )
+        
+        profiles %<>% select(matches("Metadata_"), everything())
+        
+      }
+      
+      if (!file.exists(csvgz_all_experiments_file) ||
+          overwrite_profiles) {
+        futile.logger::flog.info(glue("Writing {csvgz_all_experiments_file} ..."))
+        
+        profiles %>%
+          write_csv(csvgz_all_experiments_file)
+      }
+      
+      if (!file.exists(parquet_all_experiments_file) ||
+          overwrite_profiles) {
+        futile.logger::flog.info(glue("Writing {parquet_all_experiments_file} ..."))
+        
+        profiles %>%
+          write_parquet(
+            parquet_all_experiments_file,
+            compression = "gzip",
+            compression_level = 9
+          )
+        
+      }
+    }
+    
+    futile.logger::flog.info(glue("{parquet_all_experiments_file} is available."))
+    
+    if (load_if_present) {
+      futile.logger::flog.info(glue("Loading {parquet_all_experiments_file} ..."))
+      
+      profiles <-
+        read_parquet(parquet_all_experiments_file)
+      
+      if (report_stats) {
+        report_na_stats(profiles)
+        
+        n_outlier_variables <-
+          length(find_outlier_variables(profiles))
+        
+        futile.logger::flog.info(
+          glue(
+            "There are {n_outlier_variables} outlier variables assuming they were z-scored."
+          )
+        )
+      }
+      
+      profiles
+      
+    } else {
+      NULL
+      
+    }
+    
+  }
+```
+
+
+# Load and save Level 3 profiles
+
+```{r}
+profiles <- 
+  collate_profiles(
+  experiments = experiments,
+  profile_level = "augmented",
+  batch = batch,
+  overwrite_profiles = FALSE,
+  experiment_filter_tag = experiment_filter_tag,
+  report_stats = TRUE,
+  mapping = mapping,
+  col_types_map = col_types_map,
+  additional_metadata = additional_metadata,
+  experiment_spec_cols = experiment_spec_cols,
+  load_if_present = TRUE,
+  additional_metadata_join_cols =
+    c("Metadata_broad_sample"),
+  mapping_join_cols =
+    c("Metadata_Plate")
+) 
+
+```
+
+
+# Load and save Level 4a profiles
+
+## Whole-plate normalized
+
+```{r}
+profiles <- 
+  collate_profiles(
+  experiments = experiments,
+  profile_level = "normalized",
+  batch = params$batch,
+  overwrite_profiles = FALSE,
+  write_csvgz = TRUE,
+  experiment_filter_tag = experiment_filter_tag,
+  report_stats = TRUE,
+  mapping = mapping,
+  col_types_map = col_types_map,
+  additional_metadata = additional_metadata,
+  experiment_spec_cols = experiment_spec_cols,
+  load_if_present = TRUE,
+  additional_metadata_join_cols =
+    c("Metadata_broad_sample"),
+  mapping_join_cols =
+    c("Metadata_Plate")
+) 
+```
+
+## Negcon normalized
+
+```{r}
+profiles <-
+  collate_profiles(
+    experiments = experiments,
+    profile_level = "normalized_negcon",
+    batch = params$batch,
+    overwrite_profiles = FALSE,
+    experiment_filter_tag = experiment_filter_tag,
+    report_stats = TRUE,
+    mapping = mapping,
+    col_types_map = col_types_map,
+    additional_metadata = additional_metadata,
+    experiment_spec_cols = experiment_spec_cols,
+    load_if_present = TRUE,
+    additional_metadata_join_cols =
+      c("Metadata_broad_sample"),
+    mapping_join_cols =
+      c("Metadata_Plate")
+  )
+```
+
+# Load and save Level 4b profiles
+
+```{r}
+reprocess_feature_select <-
+  function(profile_level_in,
+           profile_level_out,
+           batch,
+           experiment_filter_tag,
+           col_types_master,
+           overwrite_profiles = FALSE) {
+    
+    csvgz_all_experiments_file_in <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_in}.csv.gz"
+      )
+    
+    csvgz_all_experiments_file_out <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.csv.gz"
+      )
+    
+    parquet_all_experiments_file_out <-
+      glue(
+        "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.parquet"
+      )
+    
+    if (!file.exists(parquet_all_experiments_file_out)) {
+      if (!file.exists(csvgz_all_experiments_file_out) ||
+          overwrite_profiles) {
+        futile.logger::flog.info("Run this command")
+        futile.logger::flog.info("conda env create --force --file environment.yml")
+        futile.logger::flog.info("conda activate pilot-cpjump1-data")
+        futile.logger::flog.info(
+          glue(
+            "python feature_select_pipeline/feature_select_pipeline.py --config feature_select_pipeline/config.yml --input {csvgz_all_experiments_file_in} --output {csvgz_all_experiments_file_out}"
+          )
+        )
+        stop(glue(
+          "Run command to generate {csvgz_all_experiments_file_out}"
+        ))
+        
+      } else {
+        futile.logger::flog.info(glue("Loading {csvgz_all_experiments_file_out} ..."))
+        
+        profiles <-
+          read_csv(csvgz_all_experiments_file_out,
+                   col_types = col_types_master)
+        
+        futile.logger::flog.info(glue("Writing {parquet_all_experiments_file_out} ..."))
+        
+        profiles %<>% select(matches("Metadata_"), everything())
+        
+        profiles %>%
+          write_parquet(
+            parquet_all_experiments_file_out,
+            compression = "gzip",
+            compression_level = 9
+          )
+        
+      }
+    }
+    
+    futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_out} ..."))
+    
+    profiles <-
+      read_parquet(parquet_all_experiments_file_out)
+    
+    report_na_stats(profiles)
+    
+    n_outlier_variables <-
+      length(find_outlier_variables(profiles))
+    
+    futile.logger::flog.info(
+      glue(
+        "There are {n_outlier_variables} outlier variables assuming they were z-scored."
+      )
+    )
+  }
+```
+
+## Whole-plate normalized
+
+```{r results='asis'}
+profile_level_in <- "normalized"
+
+profile_level_out <- "normalized_feature_select"
+
+profiles <-
+  reprocess_feature_select(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag,
+    col_types_master = col_types_master
+  ) 
+```
+## Negcon normalized
+
+```{r results='asis'}
+profile_level_in <- "normalized_negcon"
+
+profile_level_out <- "normalized_feature_select_negcon"
+
+profiles <-
+  reprocess_feature_select(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag,
+    col_types_master = col_types_master
+  ) 
+```
+
+# Load and save Level 4b outlier trimmed profiles
+
+```{r}
+reprocess_outlier_trim <-
+  function(profile_level_in,
+           profile_level_out,
+           experiment_filter_tag,
+           batch,
+           overwrite_profiles = FALSE) {
+  parquet_all_experiments_file_in <-
+    glue("../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_in}.parquet")
+  
+  parquet_all_experiments_file_out <-
+    glue(
+      "../collated/{batch}/{batch}_{experiment_filter_tag}_{profile_level_out}.parquet"
+    )
+  
+  futile.logger::flog.info(glue("Looking for {parquet_all_experiments_file_in}"))
+  stopifnot(file.exists(parquet_all_experiments_file_in))
+  
+  if (!file.exists(parquet_all_experiments_file_out))  {
+    futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_in} ..."))
+    
+    profiles <- read_parquet(parquet_all_experiments_file_in)
+    
+    outlier_variables <- find_outlier_variables(profiles)
+    
+    profiles %<>% select(-any_of(outlier_variables))
+    
+    futile.logger::flog.info(glue("Writing {parquet_all_experiments_file_out} ..."))
+    
+    profiles %<>% select(matches("Metadata_"), everything())
+    
+    profiles %>%
+      write_parquet(parquet_all_experiments_file_out, compression = "gzip", compression_level = 9)
+    
+  } else {
+    futile.logger::flog.info(glue("Loading {parquet_all_experiments_file_out} ..."))
+    
+    profiles <-
+      read_parquet(parquet_all_experiments_file_out)
+    
+  }
+  
+  report_na_stats(profiles)
+  
+  n_outlier_variables <-
+    length(find_outlier_variables(profiles))
+  
+  futile.logger::flog.info(glue(
+    "There are {n_outlier_variables} outlier variables assuming they were z-scored."
+  ))
+}
+```
+
+## Whole-plate normalized
+
+```{r results='asis'}
+profile_level_in  <- "normalized_feature_select"
+profile_level_out <- "normalized_feature_select_outlier_trimmed"
+
+profiles <-
+  reprocess_outlier_trim(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag
+  ) 
+```
+
+## Negcon normalized
+
+```{r results='asis'}
+profile_level_in  <- "normalized_feature_select_negcon"
+profile_level_out <- "normalized_feature_select_outlier_trimmed_negcon"
+
+profiles <-
+  reprocess_outlier_trim(
+    profile_level_in = profile_level_in,
+    profile_level_out = profile_level_out,
+    batch = "2020_11_04_CPJUMP1",
+    experiment_filter_tag = experiment_filter_tag
+  ) 
+```
+
+```{r}
+sessionInfo()
+```
+
