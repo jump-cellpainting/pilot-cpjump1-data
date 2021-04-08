@@ -17,11 +17,15 @@ params:
     value:
       Metadata_cell_line: U2OS
       Metadata_experiment_condition: Standard
-  all_same_cols: !r NULL
+  nesting:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
   data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
   similarity_method: pearson
-  debug_all_same_cols: Metadata_experiment_type
   debug_experiment: 
     value:
       Metadata_cell_line: U2OS
@@ -55,21 +59,21 @@ if(!is.null(experiment)) {
   experiment_tag <- "all"
 }
 
-all_same_cols <- params$all_same_cols
+nesting <- params$nesting
 
-if(!is.null(all_same_cols)) {
-  all_same_cols_tag <-
-    all_same_cols %>%
+if(!is.null(nesting)) {
+  nesting_tag <-
+    nesting %>%
     str_remove_all("Metadata_") %>%
     sort() %>%
-    paste(collapse = "_")
+    paste(collapse = "-")
 } else {
-  all_same_cols_tag <- "none"
+  nesting_tag <- "none"
 }
 
-all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+nesting_tag <- paste0("same_", nesting_tag)
 
-comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+comparision_tag <- paste(experiment_tag, nesting_tag, sep = "_")
 
 futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
 ```
@@ -159,12 +163,10 @@ futile.logger::flog.info("Calculating similarity ...")
 
 similarity_method <- params$similarity_method
 
-sim_df <- sim_calculate(profiles, method = similarity_method)
-
-if(!is.null(all_same_cols)) {
-  sim_df %<>% sim_all_same(all_same_cols = all_same_cols)
-}
-
+sim_df <-
+  matric::sim_calculate(population = profiles,
+                        strata = params$nesting, 
+                        method = similarity_method)
 parquet_file <- 
   glue("{batch}/{filename_prefix}_sim_{similarity_method}.parquet")
 
