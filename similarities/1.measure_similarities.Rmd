@@ -110,6 +110,12 @@ futile.logger::flog.info(glue("Data level code = {data_level_code}"))
 ```
 
 ```{r}
+similarity_method <- params$similarity_method
+futile.logger::flog.info(glue("Similarity method = {similarity_method}"))
+```
+
+
+```{r}
 filename_prefix <- glue("{batch}_{comparision_tag}_{data_level}{norm_suffix}")
 ```
 

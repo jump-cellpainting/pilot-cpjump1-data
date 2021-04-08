@@ -17,11 +17,15 @@ params:
     value:
       Metadata_cell_line: U2OS
       Metadata_experiment_condition: Standard
-  all_same_cols: !r NULL
+  nesting:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
   data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
   similarity_method: pearson
-  debug_all_same_cols: Metadata_experiment_type
   debug_experiment: 
     value:
       Metadata_cell_line: U2OS
@@ -37,6 +41,7 @@ library(magrittr)
 library(tidyverse)
 library(glue)
 library(arrow)
+library(matric)
 ```
 
 
@@ -54,21 +59,21 @@ if(!is.null(experiment)) {
   experiment_tag <- "all"
 }
 
-all_same_cols <- params$all_same_cols
+nesting <- params$nesting
 
-if(!is.null(all_same_cols)) {
-  all_same_cols_tag <-
-    all_same_cols %>%
+if(!is.null(nesting)) {
+  nesting_tag <-
+    nesting %>%
     str_remove_all("Metadata_") %>%
     sort() %>%
-    paste(collapse = "_")
+    paste(collapse = "-")
 } else {
-  all_same_cols_tag <- "none"
+  nesting_tag <- "none"
 }
 
-all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+nesting_tag <- paste0("same_", nesting_tag)
 
-comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+comparision_tag <- paste(experiment_tag, nesting_tag, sep = "_")
 
 futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
 ```
@@ -88,6 +93,7 @@ sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_su
 batch <- params$batch
 futile.logger::flog.info(glue("Batch = {batch}"))
 ```
+
 
 ```{r}
 data_level <- params$data_level
@@ -141,11 +147,12 @@ names(metric_sets) <- metric_set_names
 parquet_file <-
   glue("{batch}/{filename_prefix}_sim_{similarity_method}_collated.parquet")
 
-futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+futile.logger::flog.info(glue("Reading {parquet_file} ..."))
 
 collated_sim <-
   arrow::read_parquet(glue(parquet_file))
 
+# TODO: `all_same_cols_rep` should be stored with the metrics files
 all_same_cols_rep <- attr(collated_sim, "all_same_cols_rep")
 
 rm(collated_sim)
