@@ -1,0 +1,149 @@
+---
+title: "Husk CPJUMP1 profiles"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: 2020_11_04_CPJUMP1
+  nesting_level_0:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
+  data_level: normalized_feature_select_outlier_trimmed
+  normalization: whole_plate
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+library(matric)
+```
+
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+
+```{r}
+data_level <- params$data_level
+futile.logger::flog.info(glue("Data level = {data_level}"))
+```
+
+
+```{r}
+if (params$normalization == "whole_plate") {
+  norm_suffix <- ""
+} else if (params$normalization == "negcon") {
+  norm_suffix <- "_negcon"
+}
+sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
+```
+
+
+```{r}
+filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
+```
+
+# Load
+
+```{r}
+parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
+
+futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+
+stopifnot(file.exists(parquet_file))
+
+profiles <-
+  read_parquet(parquet_file) 
+
+variables <- 
+  str_subset(names(profiles), "Metadata_", negate = TRUE)
+```
+
+From https://github.com/jump-cellpainting/pilot-cpjump1-analysis/issues/13#issuecomment-799779409
+
+The following plates showed some anomalies, but they were all included in the analysis:
+- `BR00116995` had empty fields (no cells)
+
+```{r}
+profiles %>%
+  group_by(Metadata_Plate) %>%
+  tally()
+```
+
+
+```{r}
+dmso_profiles <- 
+  profiles %>%
+  filter(Metadata_control_type == "negcon")
+
+dmso_profiles %>%
+  group_by(Metadata_Plate) %>%
+  tally()
+```
+
+# Transform
+
+```{r}
+futile.logger::flog.threshold(futile.logger::DEBUG)
+profiles_husked <-
+  cytominer::stratify(
+    reducer = cytominer::husk,
+    population = profiles,
+    variables = variables,
+    sample = dmso_profiles,
+    strata = params$nesting_level_0,
+    remove_outliers = TRUE,
+    epsilon = 1e-06,
+    remove_signal = TRUE,
+    flatten_noise = FALSE
+  )
+futile.logger::flog.threshold(futile.logger::WARN)
+```
+
+# Plot
+
+```{r}
+profiles_husked %>% 
+  sample_frac(1) %>%
+  filter(Metadata_experiment_condition == "Standard" & 
+           Metadata_experiment_type == "Compound") %>%
+  filter(Metadata_negcon_or_other == "negcon") %>%
+  ggplot(aes(V1, V2, color = Metadata_Plate)) + geom_point() +
+  facet_wrap(Metadata_cell_line ~ Metadata_timepoint, scales = "free") + 
+  theme(legend.position = "none") +
+  ggtitle(glue("Husked")) 
+```
+
+
+# Save
+
+```{r}
+
+parquet_file <- glue("{batch}/{filename_prefix_profiles}_husked.parquet")
+
+futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+
+profiles_husked %>%
+  write_parquet(parquet_file, 
+                compression = "gzip", 
+                compression_level = 9)
+```
+
+
