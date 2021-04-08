@@ -1,6 +1,26 @@
 ---
 title: "Knit notebooks"
-output: html_notebook
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: 2020_11_04_CPJUMP1
+  nesting_level_0:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
+  data_level: normalized_feature_select_outlier_trimmed
+  normalization: whole_plate
 ---
 
 # Setup
@@ -12,12 +32,12 @@ library(tidyverse)
 
 ```{r}
 render_notebook <-
-  function(notebook_filename,
+  function(notebook,
            data_level,
            similarity_method,
            Metadata_cell_line,
            Metadata_experiment_condition) {
-    notebook_name <- tools::file_path_sans_ext(notebook_filename)
+    notebook_name <- tools::file_path_sans_ext(notebook)
     parameters <- list(
       data_level = data_level,
       similarity_method = similarity_method,
@@ -29,7 +49,9 @@ render_notebook <-
     )
     
     parameters_tag <-
-      glue::glue("{Metadata_cell_line}_{Metadata_experiment_condition}_{data_level}_sim_{similarity_method}")
+      glue::glue(
+        "{Metadata_cell_line}_{Metadata_experiment_condition}_{data_level}_sim_{similarity_method}"
+      )
     
     print(parameters)
     
@@ -41,83 +63,102 @@ render_notebook <-
                       output_file = output_file)
     
   }
+
+
+render_all_notebooks <-
+  function(notebooks, ...) {
+    notebooks %>%
+      walk(function(notebook) {
+        render_notebook(notebook, ...)
+        
+      })
+  }
+```
+
+
+```{r}
+Metadata_cell_line <- "U2OS"
+Metadata_experiment_condition <- "Standard"
+```
+
+
+```{r}
+notebooks <- c(
+  "1.measure_similarities.Rmd",
+  "2.collate_similarities.Rmd",
+  "3.inspect_similarities.Rmd"
+)
 ```
 
 # Whole-plate z-scored
 
-```{r}
+```{r echo=FALSE}
 data_level <- "normalized_feature_select_outlier_trimmed"
 ```
 
+## Pearson
 
 ```{r echo=FALSE}
-render_notebook(
-  "1.measure_similarities.Rmd",
+similarity_method <- "pearson"
+
+render_all_notebooks(
+  notebooks,
   data_level = data_level,
-  similarity_method = "pearson",
-  Metadata_cell_line = "U2OS",
-  Metadata_experiment_condition = "Standard"
+  similarity_method = similarity_method,
+  Metadata_cell_line = Metadata_cell_line,
+  Metadata_experiment_condition = Metadata_experiment_condition
 )
 ```
 
-
-```{r echo=FALSE}
-render_notebook(
-  "2.collate_similarities.Rmd",
-  data_level = data_level,
-  similarity_method = "pearson",
-  Metadata_cell_line = "U2OS",
-  Metadata_experiment_condition = "Standard"
-)
-```
-
-
-```{r echo=FALSE}
-render_notebook(
-  "3.inspect_similarities.Rmd",
-  data_level = data_level,
-  similarity_method = "pearson",
-  Metadata_cell_line = "U2OS",
-  Metadata_experiment_condition = "Standard"
-)
-```
-
-# Spherized
 
 ```{r}
-data_level <- "spherized"
+knitr::knit_exit()
 ```
 
+## Cosine
 
-```{r echo=FALSE}
-render_notebook(
-  "1.measure_similarities.Rmd",
+```{r}
+similarity_method <- "cosine"
+
+render_all_notebooks(
+  notebooks,
   data_level = data_level,
-  similarity_method = "pearson",
-  Metadata_cell_line = "U2OS",
-  Metadata_experiment_condition = "Standard"
+  similarity_method = similarity_method,
+  Metadata_cell_line = Metadata_cell_line,
+  Metadata_experiment_condition = Metadata_experiment_condition
 )
 ```
 
+# Husked
+
+```{r}
+data_level <- "normalized_feature_select_outlier_trimmed_husked"
+```
+
+## Euclidean
 
 ```{r echo=FALSE}
-render_notebook(
-  "2.collate_similarities.Rmd",
+similarity_method <- "euclidean"
+
+render_all_notebooks(
+  notebooks,
   data_level = data_level,
-  similarity_method = "pearson",
-  Metadata_cell_line = "U2OS",
-  Metadata_experiment_condition = "Standard"
+  similarity_method = similarity_method,
+  Metadata_cell_line = Metadata_cell_line,
+  Metadata_experiment_condition = Metadata_experiment_condition
 )
 ```
 
+## Cosine
 
-```{r echo=FALSE}
-render_notebook(
-  "3.inspect_similarities.Rmd",
+```{r}
+similarity_method <- "cosine"
+
+render_all_notebooks(
+  notebooks,
   data_level = data_level,
-  similarity_method = "pearson",
-  Metadata_cell_line = "U2OS",
-  Metadata_experiment_condition = "Standard"
+  similarity_method = similarity_method,
+  Metadata_cell_line = Metadata_cell_line,
+  Metadata_experiment_condition = Metadata_experiment_condition
 )
 ```
-

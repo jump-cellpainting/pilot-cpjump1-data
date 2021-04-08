@@ -338,8 +338,8 @@ comparision_tag &lt;- paste(experiment_tag, all_same_cols_tag, sep = &quot;_&quo
 
 futile.logger::flog.info(glue(&quot;Comparison tag = {comparision_tag}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMTo1N10gQ29tcGFyaXNvbiB0YWcgPSBVMk9TX1N0YW5kYXJkX3NhbWVfbm9uZVxuIn0= -->
-<pre><code>INFO [2021-03-31 15:01:57] Comparison tag = U2OS_Standard_same_none</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NTozMF0gQ29tcGFyaXNvbiB0YWcgPSBVMk9TX1N0YW5kYXJkX3NhbWVfbm9uZVxuIn0= -->
+<pre><code>INFO [2021-04-08 06:55:30] Comparison tag = U2OS_Standard_same_none</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -367,8 +367,8 @@ sprintf(&quot;Normalization = %s. Using suffix = &#39;%s&#39;&quot;, params$norm
 <pre class="r"><code>batch &lt;- params$batch
 futile.logger::flog.info(glue(&quot;Batch = {batch}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMTo1N10gQmF0Y2ggPSAyMDIwXzExXzA0X0NQSlVNUDFcbiJ9 -->
-<pre><code>INFO [2021-03-31 15:01:57] Batch = 2020_11_04_CPJUMP1</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NTozMF0gQmF0Y2ggPSAyMDIwXzExXzA0X0NQSlVNUDFcbiJ9 -->
+<pre><code>INFO [2021-04-08 06:55:30] Batch = 2020_11_04_CPJUMP1</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -388,14 +388,14 @@ stopifnot(!is.na(data_level_code))
 
 futile.logger::flog.info(glue(&quot;Data level = {data_level}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMTo1N10gRGF0YSBsZXZlbCA9IG5vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkXG4ifQ== -->
-<pre><code>INFO [2021-03-31 15:01:57] Data level = normalized_feature_select_outlier_trimmed</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NTozMF0gRGF0YSBsZXZlbCA9IG5vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkXG4ifQ== -->
+<pre><code>INFO [2021-04-08 06:55:30] Data level = normalized_feature_select_outlier_trimmed</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiZnV0aWxlLmxvZ2dlcjo6ZmxvZy5pbmZvKGdsdWUoXCJEYXRhIGxldmVsIGNvZGUgPSB7ZGF0YV9sZXZlbF9jb2RlfVwiKSkifQ== -->
 <pre class="r"><code>futile.logger::flog.info(glue(&quot;Data level code = {data_level_code}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMTo1N10gRGF0YSBsZXZlbCBjb2RlID0gNGJcbiJ9 -->
-<pre><code>INFO [2021-03-31 15:01:57] Data level code = 4b</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NTozMF0gRGF0YSBsZXZlbCBjb2RlID0gNGJcbiJ9 -->
+<pre><code>INFO [2021-04-08 06:55:30] Data level code = 4b</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -418,8 +418,8 @@ parquet_file &lt;- glue(&quot;../collated/{batch}/{filename_prefix_profiles}.par
 
 futile.logger::flog.info(glue(&quot;Loading {parquet_file} ...&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMTo1N10gTG9hZGluZyAuLi9jb2xsYXRlZC8yMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX2FsbF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZC5wYXJxdWV0IC4uLlxuIn0= -->
-<pre><code>INFO [2021-03-31 15:01:57] Loading ../collated/2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_all_normalized_feature_select_outlier_trimmed.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NTozMF0gTG9hZGluZyAuLi9jb2xsYXRlZC8yMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX2FsbF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZC5wYXJxdWV0IC4uLlxuIn0= -->
+<pre><code>INFO [2021-04-08 06:55:30] Loading ../collated/2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_all_normalized_feature_select_outlier_trimmed.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjpbInN0b3BpZm5vdChmaWxlLmV4aXN0cyhwYXJxdWV0X2ZpbGUpKSIsIiIsInByb2ZpbGVzIDwtXG4gIHJlYWRfcGFycXVldChwYXJxdWV0X2ZpbGUpICIsIiIsImlmKCFpcy5udWxsKGV4cGVyaW1lbnQpKSAge1xuICBwcm9maWxlcyAlPD4lIGlubmVyX2pvaW4oZXhwZXJpbWVudClcbiAgXG59Il19 -->
 <pre class="r"><code>stopifnot(file.exists(parquet_file))
@@ -489,8 +489,8 @@ if(!is.null(experiment))  {
 <!-- rnb-source-begin eyJkYXRhIjoiZnV0aWxlLmxvZ2dlcjo6ZmxvZy5pbmZvKFwiQ2FsY3VsYXRpbmcgc2ltaWxhcml0eSAuLi5cIikifQ== -->
 <pre class="r"><code>futile.logger::flog.info(&quot;Calculating similarity ...&quot;)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMTo1OF0gQ2FsY3VsYXRpbmcgc2ltaWxhcml0eSAuLi5cbiJ9 -->
-<pre><code>INFO [2021-03-31 15:01:58] Calculating similarity ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NTozMF0gQ2FsY3VsYXRpbmcgc2ltaWxhcml0eSAuLi5cbiJ9 -->
+<pre><code>INFO [2021-04-08 06:55:30] Calculating similarity ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjpbInNpbWlsYXJpdHlfbWV0aG9kIDwtIHBhcmFtcyRzaW1pbGFyaXR5X21ldGhvZCIsIiIsInNpbV9kZiA8LSBzaW1fY2FsY3VsYXRlKHByb2ZpbGVzLCBtZXRob2QgPSBzaW1pbGFyaXR5X21ldGhvZCkiLCIiLCJpZighaXMubnVsbChhbGxfc2FtZV9jb2xzKSkge1xuICBzaW1fZGYgJTw+JSBzaW1fYWxsX3NhbWUoYWxsX3NhbWVfY29scyA9IGFsbF9zYW1lX2NvbHMpXG59IiwiIiwicGFycXVldF9maWxlIDwtIFxuICBnbHVlKFwie2JhdGNofS97ZmlsZW5hbWVfcHJlZml4fV9zaW1fe3NpbWlsYXJpdHlfbWV0aG9kfS5wYXJxdWV0XCIpIiwiIiwic2ltX2RmICU+JVxuICBzaW1fd3JpdGUocGFycXVldF9maWxlKSJdfQ== -->
 <pre class="r"><code>similarity_method &lt;- params$similarity_method
@@ -507,8 +507,8 @@ parquet_file &lt;-
 sim_df %&gt;%
   sim_write(parquet_file)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wMy0zMSAxNTowMjo0N10gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9ub25lX25vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX3NpbV9wZWFyc29uLnBhcnF1ZXQgLi4uXG4ifQ== -->
-<pre><code>INFO [2021-03-31 15:02:47] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_sim_pearson.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAwNjo1NjoyNF0gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9ub25lX25vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX3NpbV9wZWFyc29uLnBhcnF1ZXQgLi4uXG4ifQ== -->
+<pre><code>INFO [2021-04-08 06:56:24] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_none_normalized_feature_select_outlier_trimmed_sim_pearson.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-output-begin eyJkYXRhIjoiTlVMTFxuIn0= -->
 <pre><code>NULL</code></pre>
