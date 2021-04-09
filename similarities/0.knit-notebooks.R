@@ -48,21 +48,22 @@ notebooks <- c(
 
 Metadata_experiment_condition <- "Standard"
 
-data_level <- "normalized_feature_select_outlier_trimmed"
-similarity_method <- "pearson"
+sets <-
+  tribble(
+    ~data_level, ~similarity_method,
+#    "normalized_feature_select_outlier_trimmed", "pearson",
+    "normalized_feature_select_outlier_trimmed", "cosine",
+    # "normalized_feature_select_outlier_trimmed_husked", "euclidean",
+    "normalized_feature_select_outlier_trimmed_husked", "cosine"
+  )
 
-data_level <- "normalized_feature_select_outlier_trimmed"
-similarity_method <- "cosine"
-
-data_level <- "normalized_feature_select_outlier_trimmed_husked"
-similarity_method <- "euclidean"
-
-data_level <- "normalized_feature_select_outlier_trimmed_husked"
-similarity_method <- "cosine"
-
-render_notebook_sets(
-  notebooks,
-  data_level = data_level,
-  similarity_method = similarity_method,
-  Metadata_experiment_condition = Metadata_experiment_condition
-)
+sets %>%
+  pwalk(function(data_level,
+                 similarity_method) {
+    render_notebook_sets(
+      notebooks = notebooks,
+      data_level = data_level,
+      similarity_method = similarity_method,
+      Metadata_experiment_condition = Metadata_experiment_condition
+    )
+  })

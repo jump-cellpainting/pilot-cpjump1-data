@@ -128,7 +128,8 @@ cell_count_df <-
 plot_metric_v_cellcount <- 
   function(metrics,
            metric_name, 
-           plot_title) {
+           plot_title,
+           plot_subtitle) {
     
   # metrics <- level_1_metrics
   # metric_name <- "sim_scaled_mean_ref_i_mean_i"
@@ -162,7 +163,10 @@ plot_metric_v_cellcount <-
   
   frac_non_negcon_above_y_threshold <-
     metrics %>%
-    inner_join(y_threshold) %>%
+    inner_join(y_threshold, by = 
+                 c("Metadata_experiment_type",
+                   "Metadata_cell_line",
+                   "Metadata_timepoint")) %>%
     filter(Metadata_negcon_or_other != "negcon") %>%
     group_by(Metadata_experiment_type,
              Metadata_cell_line,
@@ -179,7 +183,10 @@ plot_metric_v_cellcount <-
   
   frac_above_y_threshold <-
     metrics %>%
-    inner_join(y_threshold) %>%
+    inner_join(y_threshold, by = 
+                 c("Metadata_experiment_type",
+                   "Metadata_cell_line",
+                   "Metadata_timepoint")) %>%
     group_by(Metadata_experiment_type,
              Metadata_cell_line,
              Metadata_timepoint) %>%
@@ -206,7 +213,7 @@ plot_metric_v_cellcount <-
     facet_wrap(Metadata_experiment_type~Metadata_timepoint~Metadata_cell_line, ncol = 2) + 
     geom_hline(data = y_threshold, aes(yintercept = metric_thresh), alpha = 0.5) +
     geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
-    ggtitle(plot_title) + 
+    ggtitle(plot_title, subtitle = plot_subtitle) + 
     theme(legend.position = "bottom")
   
   list(fig1 = p,
@@ -284,10 +291,13 @@ level_1_and_2_1_metrics <-
 
 ```{r}
 result <-
-  plot_metric_v_cellcount(level_1_metrics, "sim_mean_i_mean_i", experiment_tag)
+  plot_metric_v_cellcount(level_1_metrics,
+                          "sim_mean_i_mean_i",
+                          experiment_tag,
+                          data_level)
 result$fig1
-result$table1
-result$table2
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
 
@@ -295,10 +305,11 @@ result$table2
 result <-
   plot_metric_v_cellcount(level_1_metrics,
                           "sim_scaled_mean_non_rep_i_mean_i",
-                          experiment_tag)
+                          experiment_tag, 
+                          data_level)
 result$fig1
-result$table1
-result$table2
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
 
@@ -306,10 +317,11 @@ result$table2
 result <-
   plot_metric_v_cellcount(level_1_metrics,
                           "sim_scaled_mean_ref_i_mean_i",
-                          experiment_tag)
+                          experiment_tag, 
+                          data_level)
 result$fig1
-result$table1
-result$table2
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
 
@@ -318,21 +330,25 @@ result$table2
 
 ```{r}
 result <-
-  plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_mean_g", experiment_tag)
+  plot_metric_v_cellcount(level_1_and_2_1_metrics,
+                          "sim_mean_g",
+                          experiment_tag,
+                          data_level)
 result$fig1
-result$table1
-result$table2
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
 
-```{r}
+```{r }
 result <-
   plot_metric_v_cellcount(level_1_and_2_1_metrics,
                           "sim_scaled_mean_non_rep_g",
-                          experiment_tag)
+                          experiment_tag, 
+                          data_level)
 result$fig1
-result$table1
-result$table2
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
 
@@ -340,9 +356,10 @@ result$table2
 result <-
   plot_metric_v_cellcount(level_1_and_2_1_metrics,
                           "sim_scaled_mean_ref_g",
-                          experiment_tag)
+                          experiment_tag, 
+                          data_level)
 result$fig1
-result$table1
-result$table2
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
