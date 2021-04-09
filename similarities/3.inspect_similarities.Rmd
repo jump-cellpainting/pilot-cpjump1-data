@@ -267,14 +267,13 @@ plot_metric_v_cellcount <-
     facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
     geom_hline(data = y_threshold, aes(yintercept = metric_thresh), alpha = 0.5) +
     geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
-    ggtitle(plot_title)
+    ggtitle(plot_title) + 
+    theme(legend.position = "bottom")
   
-  print(p)
-  
-  print(frac_non_negcon_above_y_threshold)
-  
-  print(frac_above_y_threshold)
-  
+  list(fig1 = p,
+       table1 = frac_non_negcon_above_y_threshold,
+       table2 = frac_above_y_threshold)
+
 }
 ```
 
@@ -303,18 +302,27 @@ level_1_metrics %<>%
   inner_join(cell_count_df)
 ```
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_metrics, "sim_mean_i_mean_i", experiment_tag)
+```{r fig.asp=1, fig.width=6}
+result <- plot_metric_v_cellcount(level_1_metrics, "sim_mean_i_mean_i", experiment_tag)
+result$fig1
+result$table1
+result$table2
 ```
 
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_non_rep_i_mean_i", experiment_tag)
+```{r fig.asp=1, fig.width=6}
+result <- plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_non_rep_i_mean_i", experiment_tag)
+result$fig1
+result$table1
+result$table2
 ```
 
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_ref_i_mean_i", experiment_tag)
+```{r fig.asp=1, fig.width=6}
+result <- plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_ref_i_mean_i", experiment_tag)
+result$fig1
+result$table1
+result$table2
 ```
 
 
@@ -343,16 +351,25 @@ level_1_and_2_1_metrics %<>%
 ```
 
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_mean_g", experiment_tag)
+```{r fig.asp=1, fig.width=6}
+result <- plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_mean_g", experiment_tag)
+result$fig1
+result$table1
+result$table2
 ```
 
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_non_rep_g", experiment_tag)
+```{r fig.asp=1, fig.width=6}
+result <- plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_non_rep_g", experiment_tag)
+result$fig1
+result$table1
+result$table2
 ```
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_ref_g", experiment_tag)
+```{r fig.asp=1, fig.width=6}
+result <- plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_ref_g", experiment_tag)
+result$fig1
+result$table1
+result$table2
 ```
 
