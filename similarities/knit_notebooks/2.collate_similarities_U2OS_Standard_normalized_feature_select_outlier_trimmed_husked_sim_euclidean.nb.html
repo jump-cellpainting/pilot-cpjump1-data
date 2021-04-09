@@ -338,8 +338,8 @@ comparision_tag &lt;- paste(experiment_tag, nesting_tag, sep = &quot;_&quot;)
 
 futile.logger::flog.info(glue(&quot;Comparison tag = {comparision_tag}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NTo0N10gQ29tcGFyaXNvbiB0YWcgPSBVMk9TX1N0YW5kYXJkX3NhbWVfY2VsbF9saW5lLWV4cGVyaW1lbnRfY29uZGl0aW9uLWV4cGVyaW1lbnRfdHlwZS10aW1lcG9pbnRcbiJ9 -->
-<pre><code>INFO [2021-04-08 21:55:47] Comparison tag = U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NzozOV0gQ29tcGFyaXNvbiB0YWcgPSBVMk9TX1N0YW5kYXJkX3NhbWVfY2VsbF9saW5lLWV4cGVyaW1lbnRfY29uZGl0aW9uLWV4cGVyaW1lbnRfdHlwZS10aW1lcG9pbnRcbiJ9 -->
+<pre><code>INFO [2021-04-08 21:57:39] Comparison tag = U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -367,8 +367,8 @@ sprintf(&quot;Normalization = %s. Using suffix = &#39;%s&#39;&quot;, params$norm
 <pre class="r"><code>batch &lt;- params$batch
 futile.logger::flog.info(glue(&quot;Batch = {batch}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NTo0N10gQmF0Y2ggPSAyMDIwXzExXzA0X0NQSlVNUDFcbiJ9 -->
-<pre><code>INFO [2021-04-08 21:55:47] Batch = 2020_11_04_CPJUMP1</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NzozOV0gQmF0Y2ggPSAyMDIwXzExXzA0X0NQSlVNUDFcbiJ9 -->
+<pre><code>INFO [2021-04-08 21:57:39] Batch = 2020_11_04_CPJUMP1</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -388,14 +388,14 @@ stopifnot(!is.na(data_level_code))
 
 futile.logger::flog.info(glue(&quot;Data level = {data_level}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NTo0N10gRGF0YSBsZXZlbCA9IG5vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkXG4ifQ== -->
-<pre><code>INFO [2021-04-08 21:55:47] Data level = normalized_feature_select_outlier_trimmed</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NzozOV0gRGF0YSBsZXZlbCA9IG5vcm1hbGl6ZWRfZmVhdHVyZV9zZWxlY3Rfb3V0bGllcl90cmltbWVkX2h1c2tlZFxuIn0= -->
+<pre><code>INFO [2021-04-08 21:57:39] Data level = normalized_feature_select_outlier_trimmed_husked</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiZnV0aWxlLmxvZ2dlcjo6ZmxvZy5pbmZvKGdsdWUoXCJEYXRhIGxldmVsIGNvZGUgPSB7ZGF0YV9sZXZlbF9jb2RlfVwiKSkifQ== -->
 <pre class="r"><code>futile.logger::flog.info(glue(&quot;Data level code = {data_level_code}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NTo0N10gRGF0YSBsZXZlbCBjb2RlID0gNGJcbiJ9 -->
-<pre><code>INFO [2021-04-08 21:55:47] Data level code = 4b</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NzozOV0gRGF0YSBsZXZlbCBjb2RlID0gNGNcbiJ9 -->
+<pre><code>INFO [2021-04-08 21:57:39] Data level code = 4c</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -405,8 +405,8 @@ futile.logger::flog.info(glue(&quot;Data level = {data_level}&quot;))</code></pr
 <pre class="r"><code>similarity_method &lt;- params$similarity_method
 futile.logger::flog.info(glue(&quot;Similarity method = {similarity_method}&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NTo0N10gU2ltaWxhcml0eSBtZXRob2QgPSBwZWFyc29uXG4ifQ== -->
-<pre><code>INFO [2021-04-08 21:55:47] Similarity method = pearson</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NzozOV0gU2ltaWxhcml0eSBtZXRob2QgPSBldWNsaWRlYW5cbiJ9 -->
+<pre><code>INFO [2021-04-08 21:57:39] Similarity method = euclidean</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -428,8 +428,8 @@ futile.logger::flog.info(glue(&quot;Similarity method = {similarity_method}&quot
 
 futile.logger::flog.info(glue::glue(&quot;Loading {parquet_file} ...&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NTo0N10gTG9hZGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9zaW1fcGVhcnNvbi5wYXJxdWV0IC4uLlxuIn0= -->
-<pre><code>INFO [2021-04-08 21:55:47] Loading 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_pearson.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NzozOV0gTG9hZGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9odXNrZWRfc2ltX2V1Y2xpZGVhbi5wYXJxdWV0IC4uLlxuIn0= -->
+<pre><code>INFO [2021-04-08 21:57:39] Loading 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_husked_sim_euclidean.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoic2ltX2RmIDwtXG4gICAgc2ltX3JlYWQocGFycXVldF9maWxlKSJ9 -->
 <pre class="r"><code>sim_df &lt;-
@@ -713,11 +713,11 @@ walk(metric_set_names, function(metric_set_name) {
   
 })</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NjowNV0gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9zaW1fcGVhcnNvbl9sZXZlbF8xXzBfbWV0cmljcy5wYXJxdWV0IC4uLlxuSU5GTyBbMjAyMS0wNC0wOCAyMTo1NjowNV0gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9zaW1fcGVhcnNvbl9sZXZlbF8xX21ldHJpY3MucGFycXVldCAuLi5cbklORk8gWzIwMjEtMDQtMDggMjE6NTY6MDVdIFdyaXRpbmcgMjAyMF8xMV8wNF9DUEpVTVAxLzIwMjBfMTFfMDRfQ1BKVU1QMV9VMk9TX1N0YW5kYXJkX3NhbWVfY2VsbF9saW5lLWV4cGVyaW1lbnRfY29uZGl0aW9uLWV4cGVyaW1lbnRfdHlwZS10aW1lcG9pbnRfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfc2ltX3BlYXJzb25fbGV2ZWxfMl8xX21ldHJpY3MucGFycXVldCAuLi5cbklORk8gWzIwMjEtMDQtMDggMjE6NTY6MDVdIFdyaXRpbmcgMjAyMF8xMV8wNF9DUEpVTVAxLzIwMjBfMTFfMDRfQ1BKVU1QMV9VMk9TX1N0YW5kYXJkX3NhbWVfY2VsbF9saW5lLWV4cGVyaW1lbnRfY29uZGl0aW9uLWV4cGVyaW1lbnRfdHlwZS10aW1lcG9pbnRfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfc2ltX3BlYXJzb25fbGV2ZWxfMV9hbmRfMl8xX21ldHJpY3MucGFycXVldCAuLi5cbiJ9 -->
-<pre><code>INFO [2021-04-08 21:56:05] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_pearson_level_1_0_metrics.parquet ...
-INFO [2021-04-08 21:56:05] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_pearson_level_1_metrics.parquet ...
-INFO [2021-04-08 21:56:05] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_pearson_level_2_1_metrics.parquet ...
-INFO [2021-04-08 21:56:05] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_pearson_level_1_and_2_1_metrics.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1Nzo1N10gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9odXNrZWRfc2ltX2V1Y2xpZGVhbl9sZXZlbF8xXzBfbWV0cmljcy5wYXJxdWV0IC4uLlxuSU5GTyBbMjAyMS0wNC0wOCAyMTo1Nzo1N10gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9odXNrZWRfc2ltX2V1Y2xpZGVhbl9sZXZlbF8xX21ldHJpY3MucGFycXVldCAuLi5cbklORk8gWzIwMjEtMDQtMDggMjE6NTc6NTddIFdyaXRpbmcgMjAyMF8xMV8wNF9DUEpVTVAxLzIwMjBfMTFfMDRfQ1BKVU1QMV9VMk9TX1N0YW5kYXJkX3NhbWVfY2VsbF9saW5lLWV4cGVyaW1lbnRfY29uZGl0aW9uLWV4cGVyaW1lbnRfdHlwZS10aW1lcG9pbnRfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfaHVza2VkX3NpbV9ldWNsaWRlYW5fbGV2ZWxfMl8xX21ldHJpY3MucGFycXVldCAuLi5cbklORk8gWzIwMjEtMDQtMDggMjE6NTc6NTddIFdyaXRpbmcgMjAyMF8xMV8wNF9DUEpVTVAxLzIwMjBfMTFfMDRfQ1BKVU1QMV9VMk9TX1N0YW5kYXJkX3NhbWVfY2VsbF9saW5lLWV4cGVyaW1lbnRfY29uZGl0aW9uLWV4cGVyaW1lbnRfdHlwZS10aW1lcG9pbnRfbm9ybWFsaXplZF9mZWF0dXJlX3NlbGVjdF9vdXRsaWVyX3RyaW1tZWRfaHVza2VkX3NpbV9ldWNsaWRlYW5fbGV2ZWxfMV9hbmRfMl8xX21ldHJpY3MucGFycXVldCAuLi5cbiJ9 -->
+<pre><code>INFO [2021-04-08 21:57:57] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_husked_sim_euclidean_level_1_0_metrics.parquet ...
+INFO [2021-04-08 21:57:57] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_husked_sim_euclidean_level_1_metrics.parquet ...
+INFO [2021-04-08 21:57:57] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_husked_sim_euclidean_level_2_1_metrics.parquet ...
+INFO [2021-04-08 21:57:57] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_husked_sim_euclidean_level_1_and_2_1_metrics.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -729,8 +729,8 @@ INFO [2021-04-08 21:56:05] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_St
 
 futile.logger::flog.info(glue(&quot;Writing {parquet_file} ...&quot;))</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1NjowNV0gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9zaW1fcGVhcnNvbl9jb2xsYXRlZC5wYXJxdWV0IC4uLlxuIn0= -->
-<pre><code>INFO [2021-04-08 21:56:05] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_pearson_collated.parquet ...</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiSU5GTyBbMjAyMS0wNC0wOCAyMTo1Nzo1N10gV3JpdGluZyAyMDIwXzExXzA0X0NQSlVNUDEvMjAyMF8xMV8wNF9DUEpVTVAxX1UyT1NfU3RhbmRhcmRfc2FtZV9jZWxsX2xpbmUtZXhwZXJpbWVudF9jb25kaXRpb24tZXhwZXJpbWVudF90eXBlLXRpbWVwb2ludF9ub3JtYWxpemVkX2ZlYXR1cmVfc2VsZWN0X291dGxpZXJfdHJpbW1lZF9odXNrZWRfc2ltX2V1Y2xpZGVhbl9jb2xsYXRlZC5wYXJxdWV0IC4uLlxuIn0= -->
+<pre><code>INFO [2021-04-08 21:57:57] Writing 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_U2OS_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_husked_sim_euclidean_collated.parquet ...</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiY29sbGF0ZWRfc2ltICU+JVxuICBhcnJvdzo6d3JpdGVfcGFycXVldChnbHVlKHBhcnF1ZXRfZmlsZSksIGNvbXByZXNzaW9uID0gXCJnemlwXCIsIGNvbXByZXNzaW9uX2xldmVsID0gOSkifQ== -->
 <pre class="r"><code>collated_sim %&gt;%
