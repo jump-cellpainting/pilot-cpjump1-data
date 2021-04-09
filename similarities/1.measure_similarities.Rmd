@@ -25,7 +25,7 @@ params:
       - Metadata_timepoint
   data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
-  similarity_method: pearson
+  similarity_method: cosine
   debug_experiment: 
     value:
       Metadata_cell_line: U2OS
@@ -99,7 +99,7 @@ data_level <- params$data_level
 data_level_code <- 
   case_when(
     data_level == "normalized_feature_select_outlier_trimmed" ~ "4b",
-    data_level == "spherized" ~ "4c",
+    data_level == "normalized_feature_select_outlier_trimmed_husked" ~ "4c",
     TRUE ~ NA_character_
   )
 
