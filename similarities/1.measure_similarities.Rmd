@@ -15,19 +15,16 @@ params:
   batch: "2020_11_04_CPJUMP1"
   experiment: 
     value:
-      Metadata_cell_line: U2OS
       Metadata_experiment_condition: Standard
-  all_same_cols: !r NULL
+  strata:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
   data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
-  similarity_method: pearson
-  debug_all_same_cols: Metadata_experiment_type
-  debug_experiment: 
-    value:
-      Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
-      Metadata_experiment_type: Compound
-      Metadata_experiment_condition: Standard
+  similarity_method: cosine
 ---
 
 # Setup
@@ -38,75 +35,28 @@ library(tidyverse)
 library(glue)
 library(arrow)
 library(matric)
+library(logger)
+source("utils.R")
+log_layout(layout_no_timestamp)
 ```
 
 
 ```{r}
-experiment <- as.data.frame(params$experiment)
+process_notebook_params(params)
 
-if(!is.null(experiment)) {
-  experiment_tag <-
-    experiment %>%
-    unite("experiment_tag", everything()) %>%
-    pull("experiment_tag") %>%
-    sort() %>%
-    paste(collapse = "_")
-} else {
-  experiment_tag <- "all"
-}
+log_info("Comparison tag = {comparision_tag}")
 
-all_same_cols <- params$all_same_cols
+log_info("Normalization = {normalization}. Using suffix = '{norm_suffix}'")
 
-if(!is.null(all_same_cols)) {
-  all_same_cols_tag <-
-    all_same_cols %>%
-    str_remove_all("Metadata_") %>%
-    sort() %>%
-    paste(collapse = "_")
-} else {
-  all_same_cols_tag <- "none"
-}
+log_info("Batch = {batch}")
 
-all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+log_info("Data level = {data_level}")
 
-comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+log_info("Data level tag = {data_level_tag}")
 
-futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
-```
+log_info("Similarity method = {similarity_method}")
 
-
-```{r}
-if (params$normalization == "whole_plate") {
-  norm_suffix <- ""
-} else if (params$normalization == "negcon") {
-  norm_suffix <- "_negcon"
-}
-sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
-```
-
-```{r}
-batch <- params$batch
-futile.logger::flog.info(glue("Batch = {batch}"))
-```
-
-```{r}
-data_level <- params$data_level
-
-data_level_code <- 
-  case_when(
-    data_level == "normalized_feature_select_outlier_trimmed" ~ "4b",
-    data_level == "spherized" ~ "4c",
-    TRUE ~ NA_character_
-  )
-
-stopifnot(!is.na(data_level_code))
-
-futile.logger::flog.info(glue("Data level = {data_level}"))
-futile.logger::flog.info(glue("Data level code = {data_level_code}"))
-```
-
-```{r}
-filename_prefix <- glue("{batch}_{comparision_tag}_{data_level}{norm_suffix}")
+log_info("Filename prefix = {filename_prefix}")
 ```
 
 # Load profiles
@@ -116,7 +66,7 @@ filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
 
 parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
 
-futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+log_info(glue("Loading {parquet_file} ..."))
 
 stopifnot(file.exists(parquet_file))
 
@@ -155,16 +105,14 @@ profiles %>%
 # Compute similarity matrix
 
 ```{r}
-futile.logger::flog.info("Calculating similarity ...")
+log_info("Calculating similarity ...")
 
 similarity_method <- params$similarity_method
 
-sim_df <- sim_calculate(profiles, method = similarity_method)
-
-if(!is.null(all_same_cols)) {
-  sim_df %<>% sim_all_same(all_same_cols = all_same_cols)
-}
-
+sim_df <-
+  matric::sim_calculate(population = profiles,
+                        strata = strata, 
+                        method = similarity_method)
 parquet_file <- 
   glue("{batch}/{filename_prefix}_sim_{similarity_method}.parquet")
 

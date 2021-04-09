@@ -7,27 +7,20 @@ output:
     toc_depth: 3
     number_sections: yes
     theme: lumen
-  html_document:
-    toc: yes
-    toc_depth: '3'
-    df_print: paged
 params:
   batch: "2020_11_04_CPJUMP1"
   experiment: 
     value:
-      Metadata_cell_line: U2OS
       Metadata_experiment_condition: Standard
-  all_same_cols: !r NULL
+  strata:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
   data_level: normalized_feature_select_outlier_trimmed
   normalization: whole_plate
-  similarity_method: pearson
-  debug_all_same_cols: Metadata_experiment_type
-  debug_experiment: 
-    value:
-      Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
-      Metadata_experiment_type: Compound
-      Metadata_experiment_condition: Standard
+  similarity_method: cosine
 ---
 
 # Setup
@@ -37,83 +30,29 @@ library(magrittr)
 library(tidyverse)
 library(glue)
 library(arrow)
+library(matric)
+library(logger)
+source("utils.R")
+log_layout(layout_no_timestamp)
 ```
 
 
 ```{r}
-experiment <- as.data.frame(params$experiment)
+process_notebook_params(params)
 
-if(!is.null(experiment)) {
-  experiment_tag <-
-    experiment %>%
-    unite("experiment_tag", everything()) %>%
-    pull("experiment_tag") %>%
-    sort() %>%
-    paste(collapse = "_")
-} else {
-  experiment_tag <- "all"
-}
+log_info("Comparison tag = {comparision_tag}")
 
-all_same_cols <- params$all_same_cols
+log_info("Normalization = {normalization}. Using suffix = '{norm_suffix}'")
 
-if(!is.null(all_same_cols)) {
-  all_same_cols_tag <-
-    all_same_cols %>%
-    str_remove_all("Metadata_") %>%
-    sort() %>%
-    paste(collapse = "_")
-} else {
-  all_same_cols_tag <- "none"
-}
+log_info("Batch = {batch}")
 
-all_same_cols_tag <- paste0("same_", all_same_cols_tag)
+log_info("Data level = {data_level}")
 
-comparision_tag <- paste(experiment_tag, all_same_cols_tag, sep = "_")
+log_info("Data level tag = {data_level_tag}")
 
-futile.logger::flog.info(glue("Comparison tag = {comparision_tag}"))
-```
+log_info("Similarity method = {similarity_method}")
 
-
-```{r}
-if (params$normalization == "whole_plate") {
-  norm_suffix <- ""
-} else if (params$normalization == "negcon") {
-  norm_suffix <- "_negcon"
-}
-sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
-```
-
-
-```{r}
-batch <- params$batch
-futile.logger::flog.info(glue("Batch = {batch}"))
-```
-
-```{r}
-data_level <- params$data_level
-
-data_level_code <- 
-  case_when(
-    data_level == "normalized_feature_select_outlier_trimmed" ~ "4b",
-    data_level == "spherized" ~ "4c",
-    TRUE ~ NA_character_
-  )
-
-stopifnot(!is.na(data_level_code))
-
-futile.logger::flog.info(glue("Data level = {data_level}"))
-futile.logger::flog.info(glue("Data level code = {data_level_code}"))
-```
-
-
-```{r}
-similarity_method <- params$similarity_method
-futile.logger::flog.info(glue("Similarity method = {similarity_method}"))
-```
-
-
-```{r}
-filename_prefix <- glue("{batch}_{comparision_tag}_{data_level}{norm_suffix}")
+log_info("Filename prefix = {filename_prefix}")
 ```
 
 # Load metrics
@@ -141,11 +80,12 @@ names(metric_sets) <- metric_set_names
 parquet_file <-
   glue("{batch}/{filename_prefix}_sim_{similarity_method}_collated.parquet")
 
-futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+futile.logger::flog.info(glue("Reading {parquet_file} ..."))
 
 collated_sim <-
   arrow::read_parquet(glue(parquet_file))
 
+# TODO: `all_same_cols_rep` should be stored with the metrics files
 all_same_cols_rep <- attr(collated_sim, "all_same_cols_rep")
 
 rm(collated_sim)
@@ -184,12 +124,12 @@ cell_count_df <-
 
 ## Functions
 
-
 ```{r}
 plot_metric_v_cellcount <- 
   function(metrics,
            metric_name, 
-           plot_title) {
+           plot_title,
+           plot_subtitle) {
     
   # metrics <- level_1_metrics
   # metric_name <- "sim_scaled_mean_ref_i_mean_i"
@@ -201,6 +141,7 @@ plot_metric_v_cellcount <-
     metrics %>%
     filter(Metadata_negcon_or_other == "negcon") %>%
     group_by(Metadata_experiment_type,
+             Metadata_cell_line,
              Metadata_timepoint) %>%
     summarise(
       cell_count_thresh =
@@ -212,6 +153,7 @@ plot_metric_v_cellcount <-
     metrics %>%
     filter(Metadata_negcon_or_other == "negcon") %>%
     group_by(Metadata_experiment_type,
+             Metadata_cell_line,
              Metadata_timepoint) %>%
     summarise(
       metric_thresh =
@@ -221,32 +163,43 @@ plot_metric_v_cellcount <-
   
   frac_non_negcon_above_y_threshold <-
     metrics %>%
-    inner_join(y_threshold) %>%
+    inner_join(y_threshold, by = 
+                 c("Metadata_experiment_type",
+                   "Metadata_cell_line",
+                   "Metadata_timepoint")) %>%
     filter(Metadata_negcon_or_other != "negcon") %>%
     group_by(Metadata_experiment_type,
+             Metadata_cell_line,
              Metadata_timepoint) %>%
     mutate(is_above_thresh = (!!metric_sym) > metric_thresh) %>%
     summarise(
-      n_non_negcon_above_thresh =
+      n_pert_strong =
         sum(is_above_thresh),
-      n_non_negcon = n(),
-      frac_non_negcon_above_thresh = round(n_non_negcon_above_thresh / n_non_negcon, 2),
+      n_pert = n(),
+      pc_pert_strong = round(n_pert_strong / n_pert, 2),
       .groups = "keep"
-    )
+    ) %>%
+    rename_with(~str_remove_all(., "Metadata_"))
   
   frac_above_y_threshold <-
     metrics %>%
-    inner_join(y_threshold) %>%
+    inner_join(y_threshold, by = 
+                 c("Metadata_experiment_type",
+                   "Metadata_cell_line",
+                   "Metadata_timepoint")) %>%
     group_by(Metadata_experiment_type,
+             Metadata_cell_line,
              Metadata_timepoint) %>%
     mutate(is_above_thresh = (!!metric_sym) > metric_thresh) %>%
     summarise(
-      n_above_thresh =
+      n_all_strong =
         sum(is_above_thresh),
-      n = n(),
-      frac_above_thresh = round(n_above_thresh / n, 2),
+      n_all = n(),
+      pc_all_strong = round(n_all_strong / n_all, 2),
       .groups = "keep"
-    )
+    ) %>%
+    rename_with(~str_remove_all(., "Metadata_"))
+
     
   p <- 
     metrics %>%
@@ -257,30 +210,27 @@ plot_metric_v_cellcount <-
                color = Metadata_negcon_or_other)) + 
     geom_point() + 
     scale_colour_manual(values = c("empty" = "green", "negcon" = "red", "pert" = "black")) + 
-    facet_wrap(Metadata_experiment_type~Metadata_timepoint, ncol = 2) + 
+    facet_wrap(Metadata_experiment_type~Metadata_timepoint~Metadata_cell_line, ncol = 2) + 
     geom_hline(data = y_threshold, aes(yintercept = metric_thresh), alpha = 0.5) +
     geom_vline(data = x_threshold, aes(xintercept = cell_count_thresh), alpha = 0.5) +
-    ggtitle(plot_title)
+    ggtitle(plot_title, subtitle = plot_subtitle) + 
+    theme(legend.position = "bottom")
   
-  print(p)
-  
-  print(frac_non_negcon_above_y_threshold)
-  
-  print(frac_above_y_threshold)
-  
+  list(fig1 = p,
+       table1 = frac_non_negcon_above_y_threshold,
+       table2 = frac_above_y_threshold)
+
 }
 ```
 
-
-## Level 1
-
-```{r rows.print=20}
-metric_sets[["level_1_metrics"]] %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_negcon_or_other) %>%
-  tally()
+```{r}
+knitr::opts_chunk$set(fig.height = 12, fig.width = 6, rows.print = 20)
 ```
 
-### Plot metrics
+## Process metrics
+
+### Level 1
+
 
 ```{r}
 level_1_metrics <- 
@@ -290,62 +240,126 @@ level_1_metrics <-
 
 ```{r}
 level_1_metrics %>%
-  anti_join(cell_count_df)
-
-level_1_metrics %<>%
-  inner_join(cell_count_df)
-```
-
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_metrics, "sim_mean_i_mean_i", experiment_tag)
-```
-
-
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_non_rep_i_mean_i", experiment_tag)
-```
-
-
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_metrics, "sim_scaled_mean_ref_i_mean_i", experiment_tag)
-```
-
-
-## Level 1 and 2_1 
-
-```{r rows.print=20}
-metric_sets[["level_1_and_2_1_metrics"]] %>%
-  group_by(Metadata_experiment_condition, Metadata_experiment_type, Metadata_timepoint, Metadata_negcon_or_other) %>%
+  group_by(across(all_of(c(strata, "Metadata_negcon_or_other")))) %>%
+  rename_with(~str_remove_all(., "Metadata_")) %>%
   tally()
 ```
 
-### Plot metrics
+Confirm that all rows have cell counts associated with them
+
+```{r}
+level_1_metrics %>%
+  anti_join(cell_count_df)
+```
+
+Join with cell count
+
+```{r}
+level_1_metrics <- 
+  level_1_metrics %>%
+  inner_join(cell_count_df)
+```
+
+
+### Level 2
 
 ```{r}
 level_1_and_2_1_metrics <- 
   metric_sets[["level_1_and_2_1_metrics"]]
 ```
 
+Confirm that all rows have cell counts associated with them
 
 ```{r}
 level_1_and_2_1_metrics %>%
   anti_join(cell_count_df)
+```
 
-level_1_and_2_1_metrics %<>%
+Join with cell count
+
+```{r}
+level_1_and_2_1_metrics <-
+  level_1_and_2_1_metrics %>%
   inner_join(cell_count_df)
 ```
 
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_mean_g", experiment_tag)
+## Plot metrics
+
+### Level 1
+
+
+```{r}
+result <-
+  plot_metric_v_cellcount(level_1_metrics,
+                          "sim_mean_i_mean_i",
+                          experiment_tag,
+                          data_level)
+result$fig1
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_non_rep_g", experiment_tag)
+```{r}
+result <-
+  plot_metric_v_cellcount(level_1_metrics,
+                          "sim_scaled_mean_non_rep_i_mean_i",
+                          experiment_tag, 
+                          data_level)
+result$fig1
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
-```{r fig.asp=1}
-plot_metric_v_cellcount(level_1_and_2_1_metrics, "sim_scaled_mean_ref_g", experiment_tag)
+
+```{r}
+result <-
+  plot_metric_v_cellcount(level_1_metrics,
+                          "sim_scaled_mean_ref_i_mean_i",
+                          experiment_tag, 
+                          data_level)
+result$fig1
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
+```
+
+
+### Level 1 and 2_1 
+
+
+```{r}
+result <-
+  plot_metric_v_cellcount(level_1_and_2_1_metrics,
+                          "sim_mean_g",
+                          experiment_tag,
+                          data_level)
+result$fig1
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
+```
+
+
+```{r }
+result <-
+  plot_metric_v_cellcount(level_1_and_2_1_metrics,
+                          "sim_scaled_mean_non_rep_g",
+                          experiment_tag, 
+                          data_level)
+result$fig1
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
+```
+
+
+```{r}
+result <-
+  plot_metric_v_cellcount(level_1_and_2_1_metrics,
+                          "sim_scaled_mean_ref_g",
+                          experiment_tag, 
+                          data_level)
+result$fig1
+knitr::kable(result$table1, caption = data_level)
+knitr::kable(result$table2, caption = data_level)
 ```
 
