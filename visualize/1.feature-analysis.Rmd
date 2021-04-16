@@ -1,0 +1,108 @@
+---
+title: "Feature analysis"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  batch: 2020_11_04_CPJUMP1
+  data_level: normalized
+  normalization: negcon
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+library(matric)
+```
+
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+
+```{r}
+data_level <- params$data_level
+futile.logger::flog.info(glue("Data level = {data_level}"))
+```
+
+
+```{r}
+if (params$normalization == "whole_plate") {
+  norm_suffix <- ""
+} else if (params$normalization == "negcon") {
+  norm_suffix <- "_negcon"
+}
+sprintf("Normalization = %s. Using suffix = '%s'", params$normalization, norm_suffix)
+```
+
+
+```{r}
+filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
+```
+
+# Load
+
+```{r}
+parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
+
+futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+
+stopifnot(file.exists(parquet_file))
+
+profiles <-
+  read_parquet(parquet_file) 
+
+variables <- 
+  str_subset(names(profiles), "Metadata_", negate = TRUE)
+```
+
+```{r}
+profiles %>%
+  group_by(Metadata_Plate) %>%
+  tally()
+```
+
+
+# Transform
+
+```{r}
+profiles_enriched <- 
+  profiles %>%
+  distinct(Metadata_Plate)
+```
+
+# Plot
+
+```{r}
+
+```
+
+
+# Save
+
+```{r}
+parquet_file <- glue("{batch}/{filename_prefix_profiles}_feature_enrichment.csv")
+
+futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+
+profiles_enriched %>%
+  write_csv(parquet_file, 
+                compression = "gzip", 
+                compression_level = 9)
+```
+
+
