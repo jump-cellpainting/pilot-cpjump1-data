@@ -114,7 +114,7 @@ filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
 
 ```{r}
 parquet_file_recoded <-
-  glue("../collated/{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
+  glue("{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
 
 if (file.exists(parquet_file_recoded)) {
   parquet_file <- parquet_file_recoded
@@ -141,9 +141,9 @@ if (file.exists(parquet_file_recoded)) {
   profiles <-
     read_parquet(parquet_file)
   
-  if(!is.null(experiment)) {
-    profiles <- profiles %>% inner_join(experiment)
-  }
+  # if(!is.null(experiment)) {
+  #   profiles <- profiles %>% inner_join(experiment)
+  # }
   
   variables <-
     str_subset(names(profiles), "Metadata_", negate = TRUE)
@@ -174,9 +174,9 @@ if (file.exists(parquet_file_recoded)) {
   attr(profiles, "variable_groups") <- params$variable_groups
   
   parquet_file <-
-    glue("../collated/{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
+    parquet_file_recoded
   
-  futile.logger::flog.info(glue("Writing {parquet_file_recoded} ..."))
+  futile.logger::flog.info(glue("Writing {parquet_file} ..."))
   
   profiles %>%
     write_parquet(parquet_file,
@@ -248,20 +248,42 @@ cytominer_variable_group_enrichment <-
 ## Execute
 
 ```{r}
-profiles_enriched <-
-  profiles %>%
-  group_by(across(params$strata_replicate)) %>%
-  summarize(across(all_of(variables), median), .groups = "keep") %>%
-  group_by(across(params$nesting_level_0)) %>%
-  summarise(
-    cytominer_variable_group_enrichment(
-      cur_data_all(),
-      variables = variables,
-      variable_groups = params$variable_groups
-    ),
-    .groups = "keep"
-  ) %>%
-  ungroup()
+parquet_file <-
+  glue("{batch}/{filename_prefix_profiles}_enriched.parquet")
+
+if (file.exists(parquet_file)) {
+  futile.logger::flog.info(glue("Reading {parquet_file} ..."))
+  
+  profiles_enriched <-
+    read_parquet(parquet_file)
+  
+} else {
+  
+  profiles_enriched <-
+    profiles %>%
+    group_by(across(params$strata_replicate)) %>%
+    summarize(across(all_of(variables), median), .groups = "keep") %>%
+    group_by(across(params$nesting_level_0)) %>%
+    summarise(
+      cytominer_variable_group_enrichment(
+        cur_data_all(),
+        variables = variables,
+        variable_groups = params$variable_groups
+      ),
+      .groups = "keep"
+    ) %>%
+    ungroup()
+  
+  attr(profiles, "variable_groups") <- params$variable_groups
+  
+  futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+  
+  profiles_enriched %>%
+    write_parquet(parquet_file,
+                  compression = "gzip",
+                  compression_level = 9)
+  
+}
 
 variables_enriched <-
   str_subset(names(profiles_enriched), "Metadata_", negate = TRUE)
@@ -271,6 +293,7 @@ variables_enriched <-
 
 ```{r}
 profiles_enriched %>% 
+  inner_join(experiment) %>%
   pivot_longer(-matches("Metadata"), 
                names_to = "feature_group")%>% 
   ggplot(aes(feature_group, value)) + 
@@ -279,6 +302,7 @@ profiles_enriched %>%
 ```
 ```{r}
 profiles_enriched %>% 
+  inner_join(experiment) %>%
   pivot_longer(-matches("Metadata"), 
                names_to = "feature_group") %>% 
   ggplot(aes(feature_group, value, group = Metadata_Well)) + 
@@ -289,7 +313,9 @@ profiles_enriched %>%
 ```{r}
 library(plotly)
 
-df <- profiles_enriched
+df <- 
+  profiles_enriched %>%
+  inner_join(experiment)
 
 dimensions <- list(
   list(label = "Intensity_RNA",
@@ -297,9 +323,6 @@ dimensions <- list(
   list(label = 'Intensity_DNA',
        values = ~ Intensity_DNA)
 )
-
-  
-df <- df %>% select(all_of(variables_enriched))
 
 dimensions <-
   variables_enriched %>%
@@ -316,20 +339,6 @@ df %>%
             dimensions = dimensions)
 ```
 
-# Save
 
-```{r}
-attr(profiles, "variable_groups") <- params$variable_groups
-
-parquet_file <-
-  glue("../collated/{batch}/{filename_prefix_profiles}_enriched.parquet")
-
-futile.logger::flog.info(glue("Writing {parquet_file_recoded} ..."))
-
-profiles_enriched %>%
-  write_parquet(parquet_file,
-                compression = "gzip",
-                compression_level = 9)
-```
 
 
