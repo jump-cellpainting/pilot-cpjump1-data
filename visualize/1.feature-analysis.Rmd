@@ -179,6 +179,9 @@ if (file.exists(parquet_file_recoded)) {
 }
 ```
 
+# Transform
+
+## Functions
 
 ```{r}
 get_beta <- function(x = 5, y = 0.99) {
@@ -236,6 +239,7 @@ cytominer_variable_group_enrichment <-
   }
 ```
 
+## Execute
 
 ```{r}
 profiles_enriched <-
@@ -254,37 +258,19 @@ profiles_enriched <-
   )
 ```
 
-
-```{r}
-
-
-```
-
-
-# Transform
-
-```{r}
-profiles_enriched <- 
-  profiles %>%
-  distinct(Metadata_Plate)
-```
-
-# Plot
-
-```{r}
-```
-
-
 # Save
 
 ```{r}
-parquet_file <- glue("{batch}/{filename_prefix_profiles}_feature_enrichment.parquet")
+attr(profiles, variable_groups) <- params$variable_groups
 
-futile.logger::flog.info(glue("Writing {parquet_file} ..."))
+parquet_file <-
+  glue("../collated/{batch}/{filename_prefix_profiles}_enriched.parquet")
+
+futile.logger::flog.info(glue("Writing {parquet_file_recoded} ..."))
 
 profiles_enriched %>%
-  write_parquet(parquet_file, 
-                compression = "gzip", 
+  write_parquet(parquet_file,
+                compression = "gzip",
                 compression_level = 9)
 ```
 
