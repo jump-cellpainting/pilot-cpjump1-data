@@ -51,10 +51,11 @@ Metadata_experiment_condition <- "Standard"
 sets <-
   tribble(
     ~data_level, ~similarity_method,
-#    "normalized_feature_select_outlier_trimmed", "pearson",
-    "normalized_feature_select_outlier_trimmed", "cosine",
-    # "normalized_feature_select_outlier_trimmed_husked", "euclidean",
-    "normalized_feature_select_outlier_trimmed_husked", "cosine"
+    "normalized_feature_select_outlier_trimmed", "pearson",
+    "normalized_feature_select_outlier_trimmed", "cosine"
+    #,
+    #"normalized_feature_select_outlier_trimmed_husked", "euclidean",
+    #"normalized_feature_select_outlier_trimmed_husked", "cosine"
   )
 
 sets %>%
