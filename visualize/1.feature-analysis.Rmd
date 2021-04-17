@@ -333,8 +333,7 @@ dimensions <-
 
 df %>%
   plot_ly(width = 1000, 
-          height = 600,
-          hoverinfo = "text") %>%
+          height = 600) %>%
   add_trace(type = 'parcoords',
             dimensions = dimensions)
 ```
