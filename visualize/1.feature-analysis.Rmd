@@ -20,6 +20,7 @@ params:
       Metadata_experiment_condition: Standard
       Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
+      Metadata_timepoint: "48"
   nesting_level_0:
     value:
       - Metadata_experiment_condition
@@ -33,7 +34,6 @@ params:
       - Metadata_cell_line
       - Metadata_timepoint
       - Metadata_plate_map_name
-      - Metadata_Plate
       - Metadata_Well
       - Metadata_genes
       - Metadata_pert_type
@@ -53,20 +53,20 @@ params:
       - Metadata_negcon_control_type_trimmed
   variable_groups:
     value:
-      - AreaOnly: _AreaShape_Area$
-      - AreaShape: AreaShape
-      - Neighbors: Neighbors
-      - Correlation: Correlation
-      - AGP_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(AGP))
-      - AGP_Intensity: ((Intensity)_.*_(AGP))
-      - ER_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(ER))
-      - ER_Intensity: ((Intensity)_.*_(ER))
-      - DNA_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(DNA))
-      - DNA_Intensity: ((Intensity)_.*_(DNA))
-      - Mito_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(Mito))
-      - Mito_Intensity: ((Intensity)_.*_(Mito))
-      - RNA_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(RNA))
-      - RNA_Intensity: ((Intensity)_.*_(RNA))
+      - xArea: _AreaShape_Area$
+      - xShape: AreaShape
+      - xNeigh: Neighbors
+      - xCorr: Correlation
+      - Tex_AGP: ((Texture|Granularity|RadialDistribution)_.*_(AGP))
+      - Tex_DNA: ((Texture|Granularity|RadialDistribution)_.*_(DNA))
+      - Tex_ER: ((Texture|Granularity|RadialDistribution)_.*_(ER))
+      - Tex_Mito: ((Texture|Granularity|RadialDistribution)_.*_(Mito))
+      - Tex_RNA: ((Texture|Granularity|RadialDistribution)_.*_(RNA))
+      - Int_AGP: ((Intensity)_.*_(AGP))
+      - Int_DNA: ((Intensity)_.*_(DNA))
+      - Int_ER: ((Intensity)_.*_(ER))
+      - Int_Mito: ((Intensity)_.*_(Mito))
+      - Int_RNA: ((Intensity)_.*_(RNA))
 ---
 
 # Setup
@@ -141,6 +141,10 @@ if (file.exists(parquet_file_recoded)) {
   profiles <-
     read_parquet(parquet_file)
   
+  if(!is.null(experiment)) {
+    profiles <- profiles %>% inner_join(experiment)
+  }
+  
   variables <-
     str_subset(names(profiles), "Metadata_", negate = TRUE)
   
@@ -166,6 +170,8 @@ if (file.exists(parquet_file_recoded)) {
     group_by(across(params$strata_replicate)) %>%
     summarize(across(all_of(variables), median),
               .groups = "keep")
+  
+  attr(profiles, "variable_groups") <- params$variable_groups
   
   parquet_file <-
     glue("../collated/{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
@@ -244,9 +250,8 @@ cytominer_variable_group_enrichment <-
 ```{r}
 profiles_enriched <-
   profiles %>%
-  inner_join(experiment) %>%
   group_by(across(params$strata_replicate)) %>%
-  summarize(across(all_of(variables), median)) %>%
+  summarize(across(all_of(variables), median), .groups = "keep") %>%
   group_by(across(params$nesting_level_0)) %>%
   summarise(
     cytominer_variable_group_enrichment(
@@ -255,13 +260,66 @@ profiles_enriched <-
       variable_groups = params$variable_groups
     ),
     .groups = "keep"
-  )
+  ) %>%
+  ungroup()
+
+variables_enriched <-
+  str_subset(names(profiles_enriched), "Metadata_", negate = TRUE)
+```
+
+# Plot
+
+```{r}
+profiles_enriched %>% 
+  pivot_longer(-matches("Metadata"), 
+               names_to = "feature_group")%>% 
+  ggplot(aes(feature_group, value)) + 
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+```{r}
+profiles_enriched %>% 
+  pivot_longer(-matches("Metadata"), 
+               names_to = "feature_group") %>% 
+  ggplot(aes(feature_group, value, group = Metadata_Well)) + 
+  geom_line(alpha = .09) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  facet_wrap(~Metadata_negcon_or_other, ncol = 1)
+```
+```{r}
+library(plotly)
+
+df <- profiles_enriched
+
+dimensions <- list(
+  list(label = "Intensity_RNA",
+       values = ~ Intensity_RNA),
+  list(label = 'Intensity_DNA',
+       values = ~ Intensity_DNA)
+)
+
+  
+df <- df %>% select(all_of(variables_enriched))
+
+dimensions <-
+  variables_enriched %>%
+  map(function(variable) {
+    list(label = variable,
+         values = df[[variable]])
+  })
+
+df %>%
+  plot_ly(width = 1000, 
+          height = 600,
+          hoverinfo = "text") %>%
+  add_trace(type = 'parcoords',
+            dimensions = dimensions)
 ```
 
 # Save
 
 ```{r}
-attr(profiles, variable_groups) <- params$variable_groups
+attr(profiles, "variable_groups") <- params$variable_groups
 
 parquet_file <-
   glue("../collated/{batch}/{filename_prefix_profiles}_enriched.parquet")
