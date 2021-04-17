@@ -15,6 +15,58 @@ params:
   batch: 2020_11_04_CPJUMP1
   data_level: normalized
   normalization: negcon
+  experiment: 
+    value:
+      Metadata_experiment_condition: Standard
+      Metadata_experiment_type: Compound
+      Metadata_cell_line: U2OS
+  nesting_level_0:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
+  strata_replicate:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
+      - Metadata_plate_map_name
+      - Metadata_Plate
+      - Metadata_Well
+      - Metadata_genes
+      - Metadata_pert_type
+      - Metadata_control_type
+      - Metadata_Plate_Map_Name
+      - Metadata_negcon_control_type
+      - Metadata_target_sequence
+      - Metadata_mg_per_ml
+      - Metadata_mmoles_per_liter
+      - Metadata_solvent
+      - Metadata_target
+      - Metadata_pert_iname
+      - Metadata_pubchem_cid
+      - Metadata_InChIKey
+      - Metadata_gene
+      - Metadata_negcon_or_other
+      - Metadata_negcon_control_type_trimmed
+  variable_groups:
+    value:
+      - AreaOnly: _AreaShape_Area$
+      - AreaShape: AreaShape
+      - Neighbors: Neighbors
+      - Correlation: Correlation
+      - AGP_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(AGP))
+      - AGP_Intensity: ((Intensity)_.*_(AGP))
+      - ER_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(ER))
+      - ER_Intensity: ((Intensity)_.*_(ER))
+      - DNA_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(DNA))
+      - DNA_Intensity: ((Intensity)_.*_(DNA))
+      - Mito_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(Mito))
+      - Mito_Intensity: ((Intensity)_.*_(Mito))
+      - RNA_Texturish: ((Texture|Granularity|RadialDistribution)_.*_(RNA))
+      - RNA_Intensity: ((Intensity)_.*_(RNA))
 ---
 
 # Setup
@@ -31,6 +83,10 @@ library(matric)
 ```{r}
 batch <- params$batch
 futile.logger::flog.info(glue("Batch = {batch}"))
+```
+```{r}
+experiment <- as.data.frame(params$experiment)
+futile.logger::flog.info(glue("Experiment = {experiment}"))
 ```
 
 
@@ -57,23 +113,151 @@ filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
 # Load
 
 ```{r}
-parquet_file <- glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
+parquet_file_recoded <-
+  glue("../collated/{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
 
-futile.logger::flog.info(glue("Loading {parquet_file} ..."))
-
-stopifnot(file.exists(parquet_file))
-
-profiles <-
-  read_parquet(parquet_file) 
-
-variables <- 
-  str_subset(names(profiles), "Metadata_", negate = TRUE)
+if (file.exists(parquet_file_recoded)) {
+  parquet_file <- parquet_file_recoded
+  
+  futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+  
+  stopifnot(file.exists(parquet_file))
+  
+  profiles <-
+    read_parquet(parquet_file)
+  
+  variables <-
+    str_subset(names(profiles), "Metadata_", negate = TRUE)
+  
+} else {
+  
+  parquet_file <-
+    glue("../collated/{batch}/{filename_prefix_profiles}.parquet")
+  
+  futile.logger::flog.info(glue("Loading {parquet_file} ..."))
+  
+  stopifnot(file.exists(parquet_file))
+  
+  profiles <-
+    read_parquet(parquet_file)
+  
+  variables <-
+    str_subset(names(profiles), "Metadata_", negate = TRUE)
+  
+  metadata_cols <-
+    str_subset(names(profiles), "Metadata_")
+  
+  variables <-
+    params$variable_groups %>%
+    unlist() %>%
+    map(function(pattern)
+      str_subset(variables, pattern = pattern)) %>%
+    unlist()
+  
+  profiles <-
+    profiles %>%
+    select(all_of(c(metadata_cols, variables)))
+  
+  variables <-
+    str_subset(names(profiles), "Metadata_", negate = TRUE)
+  
+  profiles <-
+    profiles %>%
+    group_by(across(params$strata_replicate)) %>%
+    summarize(across(all_of(variables), median),
+              .groups = "keep")
+  
+  parquet_file <-
+    glue("../collated/{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
+  
+  futile.logger::flog.info(glue("Writing {parquet_file_recoded} ..."))
+  
+  profiles %>%
+    write_parquet(parquet_file,
+                  compression = "gzip",
+                  compression_level = 9)
+}
 ```
 
+
 ```{r}
-profiles %>%
-  group_by(Metadata_Plate) %>%
-  tally()
+get_beta <- function(x = 5, y = 0.99) {
+  -log(1 / y - 1) / x
+}
+
+abs_logistic <- function(x, beta = get_beta()) {
+  2 / (1 + exp(-abs(x) * beta)) - 1
+}
+
+cytominer_variable_group_enrichment <-
+  function(population,
+           variables,
+           variable_groups,
+           sigmoid_function = abs_logistic,
+           ...) {
+    
+    variables_group_lists <-
+      variable_groups %>%
+      unlist() %>%
+      names() %>%
+      set_names() %>%
+      purrr::map(function(variable_group) {
+        stringr::str_subset(variables, variable_group)
+      }) 
+
+    population_data_transformed <-
+      variables_group_lists %>%
+      map_dfc(function(variables_group_list) {
+        population %>%
+          dplyr::select(all_of(variables_group_list)) %>%
+          dplyr::mutate(across(all_of(variables_group_list),
+                               sigmoid_function,
+                               ...)) %>%
+          dplyr::ungroup() %>%
+          dplyr::rowwise() %>%
+          dplyr::transmute(n_above = round(sum(
+            dplyr::c_across(everything()) /
+              length(variables_group_list),
+            na.rm = T
+          ), 2)) %>%
+          dplyr::pull(n_above)
+      })
+    
+    population_metadata <-
+      population %>%
+      dplyr::select(-all_of(variables))
+    
+    enriched <-
+      dplyr::bind_cols(population_metadata,
+                       population_data_transformed)
+    
+    enriched
+    
+  }
+```
+
+
+```{r}
+profiles_enriched <-
+  profiles %>%
+  inner_join(experiment) %>%
+  group_by(across(params$strata_replicate)) %>%
+  summarize(across(all_of(variables), median)) %>%
+  group_by(across(params$nesting_level_0)) %>%
+  summarise(
+    cytominer_variable_group_enrichment(
+      cur_data_all(),
+      variables = variables,
+      variable_groups = params$variable_groups
+    ),
+    .groups = "keep"
+  )
+```
+
+
+```{r}
+
+
 ```
 
 
@@ -88,19 +272,18 @@ profiles_enriched <-
 # Plot
 
 ```{r}
-
 ```
 
 
 # Save
 
 ```{r}
-parquet_file <- glue("{batch}/{filename_prefix_profiles}_feature_enrichment.csv")
+parquet_file <- glue("{batch}/{filename_prefix_profiles}_feature_enrichment.parquet")
 
 futile.logger::flog.info(glue("Writing {parquet_file} ..."))
 
 profiles_enriched %>%
-  write_csv(parquet_file, 
+  write_parquet(parquet_file, 
                 compression = "gzip", 
                 compression_level = 9)
 ```
