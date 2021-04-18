@@ -299,14 +299,14 @@ IMAGE_DIR=/tmp/2020_11_04_CPJUMP1
 
 mkdir -p $IMAGE_DIR
 
-cut -d"," -f1 2020_11_04_CPJUMP1/sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
+cut -d"," -f1 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_Standard_Compound_U2OS_48_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
 parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
 
 parallel \
  --header ".*\n" \
  -C "," \
- -a data/sample_images.csv \
+ -a 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_Standard_Compound_U2OS_48_sample_images.csv \
  --eta \
  --joblog ${IMAGE_DIR}/download.log \
  wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
