@@ -14,8 +14,6 @@ output:
 params:
   force_recompute: FALSE
   batch: 2020_11_04_CPJUMP1
-  data_level: normalized
-  normalization: negcon
   experiment: 
     value:
       Metadata_experiment_condition: Standard
@@ -28,47 +26,13 @@ params:
       - Metadata_experiment_type
       - Metadata_cell_line
       - Metadata_timepoint
-  strata_replicate:
+  channels:
     value:
-      - Metadata_experiment_condition
-      - Metadata_experiment_type
-      - Metadata_cell_line
-      - Metadata_timepoint
-      - Metadata_plate_map_name
-      - Metadata_Well
-      - Metadata_genes
-      - Metadata_pert_type
-      - Metadata_control_type
-      - Metadata_Plate_Map_Name
-      - Metadata_negcon_control_type
-      - Metadata_target_sequence
-      - Metadata_mg_per_ml
-      - Metadata_mmoles_per_liter
-      - Metadata_solvent
-      - Metadata_target
-      - Metadata_pert_iname
-      - Metadata_broad_sample
-      - Metadata_pubchem_cid
-      - Metadata_InChIKey
-      - Metadata_gene
-      - Metadata_negcon_or_other
-      - Metadata_negcon_control_type_trimmed
-  variable_groups:
-    value:
-      - xArea: _AreaShape_Area$
-      - xShape: AreaShape
-      - xNeigh: Neighbors
-      - xCorr: Correlation
-      - Tex_AGP: ((Texture|Granularity|RadialDistribution)_.*_(AGP))
-      - Tex_DNA: ((Texture|Granularity|RadialDistribution)_.*_(DNA))
-      - Tex_ER: ((Texture|Granularity|RadialDistribution)_.*_(ER))
-      - Tex_Mito: ((Texture|Granularity|RadialDistribution)_.*_(Mito))
-      - Tex_RNA: ((Texture|Granularity|RadialDistribution)_.*_(RNA))
-      - Int_AGP: ((Intensity)_.*_(AGP))
-      - Int_DNA: ((Intensity)_.*_(DNA))
-      - Int_ER: ((Intensity)_.*_(ER))
-      - Int_Mito: ((Intensity)_.*_(Mito))
-      - Int_RNA: ((Intensity)_.*_(RNA))
+      - AGP
+      - DNA
+      - ER
+      - Mito
+      - RNA
 ---
 
 # Setup
@@ -78,7 +42,6 @@ library(magrittr)
 library(tidyverse)
 library(glue)
 library(arrow)
-library(matric)
 ```
 
 
@@ -109,18 +72,21 @@ library(stringr)
 library(tidyverse)
 ```
 
-## Prepare load_data 
+# Prepare load_data 
+
+## Load 
 
 ```{r prepare_load_data, message=FALSE}
-load_data <- 
-  list.files("../load_data_csv/", pattern = "load_data.csv", full.names = T, recursive = T)  %>%
-  map_df(read_csv)
+load_data <-
+ list.files("../load_data_csv/", pattern = "load_data.csv", full.names = T, recursive = T)  %>%
+ map_df(read_csv)
 ```
 
 
 ```{r}
 load_data %>% write_parquet("~/Desktop/load_data.parquet")
 ```
+
 
 ```{r}
 load_data <- read_parquet("~/Desktop/load_data.parquet")
@@ -142,9 +108,7 @@ convert_to_s3_url <- function(pathname, filename)  {
   
 }
 
-channels <- c("DNA", "ER", "RNA", "AGP", "Mito")
-
-for (channel in channels) {
+for (channel in params$channels) {
   url_sym <- rlang::sym(str_c("URL_Orig", channel))
   
   path_sym <- rlang::sym(str_c("PathName_Orig", channel))
@@ -163,7 +127,7 @@ Plates that are not present in the collated file will be dropped
 
 ```{r}
 profiles_metadata <-
-  read_parquet("../collated/2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_all_augmented.parquet",
+  read_parquet(glue("../collated/{batch}/{batch}_all_augmented.parquet"),
               col_select = matches("Metadata_"))
 
 load_data <-
@@ -196,32 +160,40 @@ load_data %>%
 ```
 
 
-## Sample one well per perturbation per plate
+```{r}
+load_data %>% count(Metadata_FieldID)
+```
 
 ```{r}
-set.seed(5)
-
-load_data <-
+n_perturbations <-
   load_data %>%
-  group_by(Metadata_Plate, Metadata_broad_sample) %>%
-  sample_n(1) %>%
-  ungroup()
+  distinct(Metadata_broad_sample) %>%
+  nrow()
 ```
 
 ## Select a fixed field (a.k.a site)
 
 ```{r}
-fieldIDs <- data.frame(Metadata_FieldID = c(3, 5))
+fieldIDs <- data.frame(Metadata_FieldID = c(1))
+```
 
+
+```{r}
 load_data <-
   load_data %>%
   inner_join(fieldIDs, by = "Metadata_FieldID")
+
+load_data %>%
+  distinct(Metadata_broad_sample) %>%
+  count()
+
+stopifnot(load_data %>% distinct(Metadata_broad_sample) %>% nrow() == n_perturbations)
 ```
 
 ## Prune columns
 
 ```{r}
-filenames_header <- paste0("FileName_Orig", channels)
+filenames_header <- paste0("FileName_Orig", params$channels)
 
 load_data <- 
   load_data %>%
@@ -233,6 +205,7 @@ load_data <-
 load_data$Metadata_Batch <- params$batch
 ```
 
+## Add URLs for outlines
 
 ```{r}
 prefix <- "https://s3.amazonaws.com/jump-cellpainting/projects/2019_07_11_JUMP-CP-pilots"
@@ -272,6 +245,7 @@ load_data %<>%
          )
 ```
 
+# Save
 
 ```{r}
 load_data_pivoted <-
@@ -283,7 +257,6 @@ load_data_pivoted <-
 
 load_data_pivoted %>% 
   write_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images.csv"))
-
 ```
 
 ```{r}
@@ -292,21 +265,24 @@ load_data %>%
   write_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images_metadata.csv"))
 ```
 
+# Download instructions
+
 Run this on command line to download the images:
 
 ```{sh eval=FALSE}
-IMAGE_DIR=/tmp/2020_11_04_CPJUMP1
-
+BATCH=2020_11_04_CPJUMP1
+IMAGE_DIR=${BATCH}/image_cache
+EXPERIMENT_TAG=Standard_Compound_U2OS_48
 mkdir -p $IMAGE_DIR
 
-cut -d"," -f1 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_Standard_Compound_U2OS_48_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
+cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
 parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
 
 parallel \
  --header ".*\n" \
  -C "," \
- -a 2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_Standard_Compound_U2OS_48_sample_images.csv \
+ -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv \
  --eta \
  --joblog ${IMAGE_DIR}/download.log \
  wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
