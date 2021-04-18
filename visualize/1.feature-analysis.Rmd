@@ -12,6 +12,7 @@ output:
     toc_depth: '3'
     df_print: paged
 params:
+  force_recompute: FALSE
   batch: 2020_11_04_CPJUMP1
   data_level: normalized
   normalization: negcon
@@ -46,6 +47,7 @@ params:
       - Metadata_solvent
       - Metadata_target
       - Metadata_pert_iname
+      - Metadata_broad_sample
       - Metadata_pubchem_cid
       - Metadata_InChIKey
       - Metadata_gene
@@ -116,7 +118,7 @@ filename_prefix_profiles <- glue("{batch}_all_{data_level}{norm_suffix}")
 parquet_file_recoded <-
   glue("{batch}/{filename_prefix_profiles}_recoded_aggregated.parquet")
 
-if (file.exists(parquet_file_recoded)) {
+if (file.exists(parquet_file_recoded) && !params$force_recompute) {
   parquet_file <- parquet_file_recoded
   
   futile.logger::flog.info(glue("Loading {parquet_file} ..."))
@@ -251,7 +253,7 @@ cytominer_variable_group_enrichment <-
 parquet_file <-
   glue("{batch}/{filename_prefix_profiles}_enriched.parquet")
 
-if (file.exists(parquet_file)) {
+if (file.exists(parquet_file) & !params$force_recompute) {
   futile.logger::flog.info(glue("Reading {parquet_file} ..."))
   
   profiles_enriched <-
@@ -300,6 +302,7 @@ profiles_enriched %>%
   geom_boxplot() + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
+
 ```{r}
 profiles_enriched %>% 
   inner_join(experiment) %>%
