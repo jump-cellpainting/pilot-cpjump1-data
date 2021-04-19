@@ -12,7 +12,6 @@ output:
     toc_depth: '3'
     df_print: paged
 params:
-  force_recompute: FALSE
   batch: 2020_11_04_CPJUMP1
   experiment: 
     value:
@@ -20,19 +19,6 @@ params:
       Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
       Metadata_timepoint: "48"
-  nesting_level_0:
-    value:
-      - Metadata_experiment_condition
-      - Metadata_experiment_type
-      - Metadata_cell_line
-      - Metadata_timepoint
-  channels:
-    value:
-      - AGP
-      - DNA
-      - ER
-      - Mito
-      - RNA
 ---
 
 # Setup
@@ -83,9 +69,67 @@ load_data <-
   read_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images_metadata.csv"))
 ```
 
-# Generate thumbnails
+# Generate montage
+
+## Create config CSV
 
 ```{r}
+basedir <- batch
+cachedir <- "image_cache"
+montagedir <- "montage"
+create_montage_file <- glue("{batch}/{batch}_{experiment_tag}_create_montage.csv")
 
+load_data %>%
+  transmute(
+    plate = Metadata_Plate,
+    well = sprintf("r%02dc%02d", Metadata_Row, Metadata_Col),
+    basedir = basedir,
+    cachedir = cachedir,
+    montagedir = montagedir
+  ) %>%
+  write_csv(create_montage_file)
+```
+
+## Generate montage
+
+```{sh}
+BATCH=2020_11_04_CPJUMP1
+IMAGE_DIR=${BATCH}/montage
+EXPERIMENT_TAG=Standard_Compound_U2OS_48
+
+cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
+
+parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
+
+source create_montage.sh
+
+export -f create_montage
+
+parallel \
+  --header ".*\n" \
+  -C "," \
+  --joblog ${IMAGE_DIR}/create_montage.log \
+  -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_create_montage.csv \
+  create_montage {1} {2} {3} {4} {5}
+```
+
+## Generate thumbnail montage
+
+```{sh}
+BATCH=2020_11_04_CPJUMP1
+SOURCE_IMAGE_DIR=${BATCH}/montage
+DEST_IMAGE_DIR=${BATCH}/thumbnail_montage
+EXPERIMENT_TAG=Standard_Compound_U2OS_48
+
+cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
+
+parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $DEST_IMAGE_DIR/{} 
+
+parallel \
+  --dry-run \
+  -a /tmp/plates.txt \
+  --no-run-if-empty \
+  --joblog ${DEST_IMAGE_DIR}/create_thumbnail.log \
+  mogrify -format png -path ${DEST_IMAGE_DIR}/{1}/ -thumbnail 1082x ${SOURCE_IMAGE_DIR}/{1}/*.jpg
 ```
 
