@@ -126,7 +126,6 @@ cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Me
 parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $DEST_IMAGE_DIR/{} 
 
 parallel \
-  --dry-run \
   -a /tmp/plates.txt \
   --no-run-if-empty \
   --joblog ${DEST_IMAGE_DIR}/create_thumbnail.log \
