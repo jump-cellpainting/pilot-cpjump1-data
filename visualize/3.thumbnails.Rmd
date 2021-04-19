@@ -77,15 +77,18 @@ load_data <-
 basedir <- batch
 cachedir <- "image_cache"
 montagedir <- "montage"
+thumbnail_montagedir <- "thumbnail_montage"
 create_montage_file <- glue("{batch}/{batch}_{experiment_tag}_create_montage.csv")
 
 load_data %>%
   transmute(
     Metadata_Plate = Metadata_Plate,
-    Metadata_Well = sprintf("r%02dc%02d", Metadata_Row, Metadata_Col),
+    Metadata_WellCode = sprintf("r%02dc%02d", Metadata_Row, Metadata_Col),
     Metadata_Batch = basedir,
     Metadata_cachedir = cachedir,
-    Metadata_montagedir = montagedir
+    Metadata_montagedir = montagedir,
+    Metadata_Well = Metadata_Well,
+    Metadata_thumbnail_path = glue("{thumbnail_montagedir}/{Metadata_Plate}/{Metadata_WellCode}_montage.png")
   ) %>%
   write_csv(create_montage_file)
 ```
