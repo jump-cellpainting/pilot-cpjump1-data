@@ -1,0 +1,291 @@
+---
+title: "Sample images"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+  html_document:
+    toc: yes
+    toc_depth: '3'
+    df_print: paged
+params:
+  force_recompute: FALSE
+  batch: 2020_11_04_CPJUMP1
+  experiment: 
+    value:
+      Metadata_experiment_condition: Standard
+      Metadata_experiment_type: Compound
+      Metadata_cell_line: U2OS
+      Metadata_timepoint: "48"
+  nesting_level_0:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
+  channels:
+    value:
+      - AGP
+      - DNA
+      - ER
+      - Mito
+      - RNA
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+```{r}
+experiment <- as.data.frame(params$experiment)
+```
+
+```{r}
+experiment_tag <-
+  experiment %>%
+  unite("experiment_tag", everything()) %>%
+  pull("experiment_tag") %>%
+  sort() %>%
+  paste(collapse = "_")
+
+futile.logger::flog.info(glue("Experiment tag = {experiment_tag}"))
+```
+```{r message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(glue)
+library(magrittr)
+library(stringr)
+library(tidyverse)
+```
+
+# Prepare load_data 
+
+## Load 
+
+```{r prepare_load_data, message=FALSE}
+load_data <-
+ list.files("../load_data_csv/", pattern = "load_data.csv", full.names = T, recursive = T)  %>%
+ map_df(read_csv)
+```
+
+
+```{r}
+load_data %>% write_parquet("~/Desktop/load_data.parquet")
+```
+
+
+```{r}
+load_data <- read_parquet("~/Desktop/load_data.parquet")
+```
+
+
+```{r message=FALSE}
+convert_to_s3_url <- function(pathname, filename)  {
+  file.path(
+    pathname %>%
+      str_replace(
+        "/home/ubuntu/bucket",
+        "https://s3.amazonaws.com/jump-cellpainting") %>%
+      str_replace(
+        "2019_07_11_JUMP-CP/2020_11_04_CPJUMP1/images/",
+        "2019_07_11_JUMP-CP-pilots/2020_11_04_CPJUMP1/images/"),
+    filename
+  )
+  
+}
+
+for (channel in params$channels) {
+  url_sym <- rlang::sym(str_c("URL_Orig", channel))
+  
+  path_sym <- rlang::sym(str_c("PathName_Orig", channel))
+   
+  file_sym <- rlang::sym(str_c("FileName_Orig", channel))
+   
+  load_data %<>% 
+    mutate(!!url_sym := convert_to_s3_url((!!path_sym), (!!file_sym)))
+  
+}
+```
+
+## Resolve with collated data
+
+Plates that are not present in the collated file will be dropped
+
+```{r}
+profiles_metadata <-
+  read_parquet(glue("../collated/{batch}/{batch}_all_augmented.parquet"),
+              col_select = matches("Metadata_"))
+
+load_data <-
+  load_data %>%
+  inner_join(profiles_metadata)
+```
+
+
+```{r rows.print=20}
+load_data %>% 
+  distinct(across(all_of(c(params$nesting_level_0, "Metadata_Plate")))) %>%
+  arrange(across(all_of(params$nesting_level_0))) %>%
+  group_by(across(all_of(params$nesting_level_0))) %>%
+  tally()
+```
+
+
+## Sample down to the selected experiment
+
+```{r}
+load_data <-
+  load_data %>%
+  inner_join(experiment)
+
+load_data %>% 
+  distinct(across(all_of(c(params$nesting_level_0, "Metadata_Plate")))) %>%
+  arrange(across(all_of(params$nesting_level_0))) %>%
+  group_by(across(all_of(params$nesting_level_0))) %>%
+  tally()
+```
+
+
+```{r}
+load_data %>% count(Metadata_FieldID)
+```
+
+```{r}
+n_perturbations <-
+  load_data %>%
+  distinct(Metadata_broad_sample) %>%
+  nrow()
+```
+
+## Select a fixed field (a.k.a site)
+
+```{r}
+fieldIDs <- data.frame(Metadata_FieldID = c(1))
+```
+
+
+```{r}
+load_data <-
+  load_data %>%
+  inner_join(fieldIDs, by = "Metadata_FieldID")
+
+load_data %>%
+  distinct(Metadata_broad_sample) %>%
+  count()
+
+stopifnot(load_data %>% distinct(Metadata_broad_sample) %>% nrow() == n_perturbations)
+```
+
+## Prune columns
+
+```{r}
+filenames_header <- paste0("FileName_Orig", params$channels)
+
+load_data <- 
+  load_data %>%
+  select(matches("^Metadata"), matches("^URL"), matches("^FileName_Orig"))
+```
+
+
+```{r}
+load_data$Metadata_Batch <- params$batch
+```
+
+## Add URLs for outlines
+
+```{r}
+prefix <- "https://s3.amazonaws.com/jump-cellpainting/projects/2019_07_11_JUMP-CP-pilots"
+
+# s3://imaging-platform/projects/2018_06_05_cmQTL/workspace/analysis/2019_06_10_Batch3/PLATE/analysis/PLATE-WELL-SITE/outlines/WELL_sSITE--nuclei_outlines.png 
+# s3://imaging-platform/projects/2018_06_05_cmQTL/workspace/analysis/2019_06_10_Batch3/PLATE/analysis/PLATE-WELL-SITE/outlines/WELL_sSITE--cell_outlines.png.
+
+nuclei_suffix <- "nuclei_outlines.png"
+cell_suffix <- "cell_outlines.png"
+
+load_data %<>%
+  mutate(URL_nuclei_outlines = 
+           file.path(
+             prefix,
+             "workspace",
+             "analysis",
+             Metadata_Batch,
+             Metadata_Plate,
+             "analysis",
+             paste(Metadata_Plate, Metadata_Well, Metadata_FieldID, sep = "-"),
+             "outlines",
+             glue("{Metadata_Well}_s{Metadata_FieldID}--{nuclei_suffix}")
+           )
+         ) %>%
+  mutate(URL_cell_outlines = 
+           file.path(
+             prefix,
+             "workspace",
+             "analysis",
+             Metadata_Batch,
+             Metadata_Plate,
+             "analysis",
+             paste(Metadata_Plate, Metadata_Well, Metadata_FieldID, sep = "-"),
+             "outlines",
+             glue("{Metadata_Well}_s{Metadata_FieldID}--{cell_suffix}")
+           )
+         )
+```
+
+# Save
+
+```{r}
+load_data_pivoted <-
+  load_data %>%
+  select(Metadata_Plate,  Metadata_Well, matches("^URL_")) %>%
+  gather(Metadata_Channel, URL, -Metadata_Plate, -Metadata_Well) %>%
+  mutate(filename = basename(URL)) %>%
+  select(Metadata_Plate, Metadata_Well, Metadata_Channel, filename, URL)
+
+load_data_pivoted %>% 
+  write_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images.csv"))
+```
+
+```{r}
+load_data %>%
+  select(matches("^Metadata"),  matches("^FileName_Orig")) %>%
+  write_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images_metadata.csv"))
+```
+
+# Download instructions
+
+Run this on command line to download the images:
+
+```{sh eval=FALSE}
+BATCH=2020_11_04_CPJUMP1
+IMAGE_DIR=${BATCH}/image_cache
+EXPERIMENT_TAG=Standard_Compound_U2OS_48
+mkdir -p $IMAGE_DIR
+
+cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
+
+parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
+
+parallel \
+ --header ".*\n" \
+ -C "," \
+ -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv \
+ --eta \
+ --joblog ${IMAGE_DIR}/download.log \
+ wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
+  
+```
+
