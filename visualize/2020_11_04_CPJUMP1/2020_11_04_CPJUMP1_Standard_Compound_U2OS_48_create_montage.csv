@@ -1,4 +1,4 @@
-plate,well,basedir,cachedir,montagedir
+Metadata_Plate,Metadata_Well,Metadata_Batch,Metadata_cachedir,Metadata_montagedir
 BR00117010,r01c01,2020_11_04_CPJUMP1,image_cache,montage
 BR00117010,r01c02,2020_11_04_CPJUMP1,image_cache,montage
 BR00117010,r01c03,2020_11_04_CPJUMP1,image_cache,montage

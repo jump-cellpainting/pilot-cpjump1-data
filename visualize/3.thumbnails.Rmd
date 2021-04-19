@@ -13,7 +13,7 @@ output:
     df_print: paged
 params:
   batch: 2020_11_04_CPJUMP1
-  experiment: 
+  experiment:
     value:
       Metadata_experiment_condition: Standard
       Metadata_experiment_type: Compound
@@ -62,7 +62,7 @@ library(stringr)
 library(tidyverse)
 ```
 
-# Load 
+# Load
 
 ```{r message=FALSE}
 load_data <-
@@ -81,11 +81,11 @@ create_montage_file <- glue("{batch}/{batch}_{experiment_tag}_create_montage.csv
 
 load_data %>%
   transmute(
-    plate = Metadata_Plate,
-    well = sprintf("r%02dc%02d", Metadata_Row, Metadata_Col),
-    basedir = basedir,
-    cachedir = cachedir,
-    montagedir = montagedir
+    Metadata_Plate = Metadata_Plate,
+    Metadata_Well = sprintf("r%02dc%02d", Metadata_Row, Metadata_Col),
+    Metadata_Batch = basedir,
+    Metadata_cachedir = cachedir,
+    Metadata_montagedir = montagedir
   ) %>%
   write_csv(create_montage_file)
 ```
@@ -99,7 +99,7 @@ EXPERIMENT_TAG=Standard_Compound_U2OS_48
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
-parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
+parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{}
 
 source create_montage.sh
 
@@ -123,7 +123,7 @@ EXPERIMENT_TAG=Standard_Compound_U2OS_48
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
-parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $DEST_IMAGE_DIR/{} 
+parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $DEST_IMAGE_DIR/{}
 
 parallel \
   -a /tmp/plates.txt \
