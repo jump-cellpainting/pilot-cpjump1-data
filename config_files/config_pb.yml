@@ -1,0 +1,102 @@
+---
+pipeline: 2019_07_11_JUMP-CP
+output_dir: profiles
+platemap_well_column: Metadata_well_position
+annotate:
+  perform: true
+  well_column: Metadata_Well
+  external : cpjump1_compound_metadata.tsv
+normalize:
+  perform: true
+  method: mad_robustize
+  features: infer
+  negcon: true
+feature_select:
+  perform: true
+  features: infer
+  negcon: true
+  operations:
+    - variance_threshold
+    - correlation_threshold
+    - drop_na_columns
+    - blocklist
+options:
+  compression: gzip
+  float_format: "%.5g"
+  samples: all
+---
+batch: 2020_12_08_CPJUMP1_Bleaching
+plates:
+  - name: BR00116991A
+    cell: A549
+    process: true
+  - name: BR00116991B
+    cell: A549
+    process: true
+  - name: BR00116991C
+    cell: A549
+    process: true
+  - name: BR00116991D
+    cell: A549
+    process: true
+  - name: BR00116991E
+    cell: A549
+    process: true
+  - name: BR00116991F
+    cell: A549
+    process: true
+  - name: BR00116992A
+    cell: A549
+    process: true
+  - name: BR00116992B
+    cell: A549
+    process: true
+  - name: BR00116992C
+    cell: A549
+    process: true
+  - name: BR00116992D
+    cell: A549
+    process: true
+  - name: BR00116992E
+    cell: A549
+    process: true
+  - name: BR00116992F
+    cell: A549
+    process: true
+  - name: BR00116993A
+    cell: A549
+    process: true
+  - name: BR00116993B
+    cell: A549
+    process: true
+  - name: BR00116993C
+    cell: A549
+    process: true
+  - name: BR00116993D
+    cell: A549
+    process: true
+  - name: BR00116993E
+    cell: A549
+    process: true
+  - name: BR00116993F
+    cell: A549
+    process: true
+  - name: BR00116994A
+    cell: A549
+    process: true
+  - name: BR00116994B
+    cell: A549
+    process: true
+  - name: BR00116994C
+    cell: A549
+    process: true
+  - name: BR00116994D
+    cell: A549
+    process: true
+  - name: BR00116994E
+    cell: A549
+    process: true
+  - name: BR00116994F
+    cell: A549
+    process: true
+process: true
