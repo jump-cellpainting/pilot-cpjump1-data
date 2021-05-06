@@ -302,7 +302,7 @@ profiles_enriched %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
   facet_wrap(~Metadata_negcon_or_other, ncol = 1)
 ```
-```{r}
+```{r eval=TRUE}
 library(plotly)
 
 df <- 
