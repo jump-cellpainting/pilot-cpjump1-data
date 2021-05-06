@@ -1,16 +1,5 @@
 ---
 title: "Sample images"
-output:
-  html_notebook:
-    toc: yes
-    toc_float: yes
-    toc_depth: 3
-    number_sections: yes
-    theme: lumen
-  html_document:
-    toc: yes
-    toc_depth: '3'
-    df_print: paged
 params:
   batch: 2020_11_04_CPJUMP1
   experiment:
