@@ -38,7 +38,7 @@ for (i in seq(nrow(experiment_df))) {
     glue("{notebook_name}.Rmd"),
     output_dir = "knit_notebooks",
     output_format = "html_notebook",
-    output_file = glue("{notebook_name}_{experiment_tag}.Rmd"),
+    output_file = glue("{notebook_name}_{experiment_tag}"),
     params = list(experiment = as.list(experiment_i))
   )  
 }
@@ -58,7 +58,7 @@ for (i in seq(nrow(experiment_df))) {
     glue("{notebook_name}.Rmd"),
     output_dir = "knit_notebooks",
     output_format = "html_notebook",
-    output_file = glue("{notebook_name}_{experiment_tag}.Rmd"),
+    output_file = glue("{notebook_name}_{experiment_tag}"),
     params = list(experiment = as.list(experiment_i))
   )  
 }
