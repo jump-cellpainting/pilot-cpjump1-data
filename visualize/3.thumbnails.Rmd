@@ -7,7 +7,7 @@ params:
       Metadata_experiment_condition: Standard
       Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
+      Metadata_timepoint: "24"
 ---
 
 # Setup
@@ -87,7 +87,7 @@ load_data %>%
 ```{sh}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/montage
-EXPERIMENT_TAG=Standard_Compound_U2OS_48
+EXPERIMENT_TAG=Standard_Compound_U2OS_24
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
@@ -100,7 +100,7 @@ export -f create_montage
 parallel \
   --header ".*\n" \
   -C "," \
-  --joblog ${IMAGE_DIR}/create_montage.log \
+  --joblog ${IMAGE_DIR}/${BATCH}_${EXPERIMENT_TAG}_create_montage.log \
   -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_create_montage.csv \
   create_montage {1} {2} {3} {4} {5}
 ```
@@ -111,7 +111,7 @@ parallel \
 BATCH=2020_11_04_CPJUMP1
 SOURCE_IMAGE_DIR=${BATCH}/montage
 DEST_IMAGE_DIR=${BATCH}/thumbnail_montage
-EXPERIMENT_TAG=Standard_Compound_U2OS_48
+EXPERIMENT_TAG=Standard_Compound_U2OS_24
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
@@ -120,7 +120,7 @@ parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $DEST_IMAGE_DIR/{}
 parallel \
   -a /tmp/plates.txt \
   --no-run-if-empty \
-  --joblog ${DEST_IMAGE_DIR}/create_thumbnail.log \
+  --joblog ${DEST_IMAGE_DIR}/${BATCH}_${EXPERIMENT_TAG}_create_thumbnail.log \
   mogrify -format png -path ${DEST_IMAGE_DIR}/{1}/ -thumbnail 1082x ${SOURCE_IMAGE_DIR}/{1}/*.jpg
 ```
 

@@ -288,12 +288,12 @@ load_data %>%
 
 Run this on command line to download the images:
 
-NOTE: `EXPERIMENT_TAG` and `BATCH` will need to be updated by hand
+NOTE: `EXPERIMENT_TAG` and `BATCH` need to be updated by hand
 
 ```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/image_cache
-EXPERIMENT_TAG=Standard_Compound_U2OS_48
+EXPERIMENT_TAG=Standard_Compound_U2OS_24
 mkdir -p $IMAGE_DIR
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
@@ -305,7 +305,7 @@ parallel \
  -C "," \
  -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv \
  --eta \
- --joblog ${IMAGE_DIR}/download.log \
+ --joblog ${IMAGE_DIR}/${BATCH}_${EXPERIMENT_TAG}_download.log \
  wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
   
 ```
