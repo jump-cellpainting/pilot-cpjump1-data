@@ -84,6 +84,9 @@ load_data %>%
 
 ## Generate montage
 
+TODO: Factor this out as a separate bash script instead of including it in 
+a notebook
+
 ```{sh}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/montage
@@ -106,6 +109,9 @@ parallel \
 ```
 
 ## Generate thumbnail montage
+
+TODO: Factor this out as a separate bash script instead of including it in 
+a notebook
 
 ```{sh}
 BATCH=2020_11_04_CPJUMP1

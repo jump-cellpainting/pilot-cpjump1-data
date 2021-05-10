@@ -290,6 +290,9 @@ Run this on command line to download the images:
 
 NOTE: `EXPERIMENT_TAG` and `BATCH` need to be updated by hand
 
+TODO: Factor this out as a separate bash script instead of including it in 
+a notebook
+
 ```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/image_cache
