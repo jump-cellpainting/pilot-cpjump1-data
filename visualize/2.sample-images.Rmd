@@ -78,7 +78,7 @@ library(tidyverse)
 
 ## Load 
 
-```{r prepare_load_data, message=FALSE}
+```{r prepare_load_data, message=FALSE, eval=FALSE}
 load_data <-
  list.files("../load_data_csv", pattern = "load_data.csv", full.names = T, recursive = T) %>%
   map_df(function(load_data_path) {
@@ -90,7 +90,7 @@ load_data <-
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 load_data %>% write_parquet("~/Desktop/load_data.parquet")
 ```
 
@@ -153,6 +153,9 @@ profiles_metadata <-
 
 load_data <-
   load_data %>%
+  select(Metadata_Batch, Metadata_Plate, Metadata_Well, 
+         Metadata_Site, Metadata_FieldID,
+         matches("^FileName_|^PathName_|^URL_")) %>%
   inner_join(profiles_metadata, by = c("Metadata_Plate", "Metadata_Well"))
 ```
 
