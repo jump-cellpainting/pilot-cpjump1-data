@@ -17,9 +17,9 @@ params:
   experiment: 
     value:
       Metadata_experiment_condition: Standard
-      Metadata_experiment_type: Compound
+      Metadata_experiment_type: ORF
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "24"
+      Metadata_timepoint: "48"
   nesting_level_0:
     value:
       - Metadata_experiment_condition
@@ -293,7 +293,7 @@ NOTE: `EXPERIMENT_TAG` and `BATCH` need to be updated by hand
 ```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/image_cache
-EXPERIMENT_TAG=Standard_Compound_U2OS_24
+EXPERIMENT_TAG=Standard_ORF_U2OS_48
 mkdir -p $IMAGE_DIR
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
