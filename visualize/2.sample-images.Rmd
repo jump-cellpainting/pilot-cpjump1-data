@@ -154,7 +154,7 @@ profiles_metadata <-
 load_data <-
   load_data %>%
   select(Metadata_Batch, Metadata_Plate, Metadata_Well, 
-         Metadata_Site, Metadata_FieldID,
+         Metadata_Site, Metadata_FieldID, Metadata_Row, Metadata_Col,
          matches("^FileName_|^PathName_|^URL_")) %>%
   inner_join(profiles_metadata, by = c("Metadata_Plate", "Metadata_Well"))
 ```
