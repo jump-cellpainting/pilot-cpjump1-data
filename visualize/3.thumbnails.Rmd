@@ -7,7 +7,7 @@ params:
       Metadata_experiment_condition: Standard
       Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
+      Metadata_timepoint: "24"
 ---
 
 # Setup
@@ -118,7 +118,7 @@ lut %>%
 TODO: Factor this out as a separate bash script instead of including it in 
 a notebook
 
-```{sh}
+```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/montage
 EXPERIMENT_TAG=Standard_CRISPR_U2OS_144
@@ -144,7 +144,7 @@ parallel \
 TODO: Factor this out as a separate bash script instead of including it in 
 a notebook
 
-```{sh}
+```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 SOURCE_IMAGE_DIR=${BATCH}/montage
 DEST_IMAGE_DIR=${BATCH}/thumbnail_montage
