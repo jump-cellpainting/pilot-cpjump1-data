@@ -17,9 +17,9 @@ params:
   experiment: 
     value:
       Metadata_experiment_condition: Standard
-      Metadata_experiment_type: CRISPR
+      Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "144"
+      Metadata_timepoint: "24"
   nesting_level_0:
     value:
       - Metadata_experiment_condition
