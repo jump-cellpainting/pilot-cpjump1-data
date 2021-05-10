@@ -5,9 +5,9 @@ params:
   experiment:
     value:
       Metadata_experiment_condition: Standard
-      Metadata_experiment_type: ORF
+      Metadata_experiment_type: CRISPR
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
+      Metadata_timepoint: "144"
 ---
 
 # Setup
@@ -87,7 +87,7 @@ load_data %>%
 ```{sh}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/montage
-EXPERIMENT_TAG=Standard_ORF_U2OS_48
+EXPERIMENT_TAG=Standard_CRISPR_U2OS_144
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
@@ -111,7 +111,7 @@ parallel \
 BATCH=2020_11_04_CPJUMP1
 SOURCE_IMAGE_DIR=${BATCH}/montage
 DEST_IMAGE_DIR=${BATCH}/thumbnail_montage
-EXPERIMENT_TAG=Standard_ORF_U2OS_48
+EXPERIMENT_TAG=Standard_CRISPR_U2OS_144
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
