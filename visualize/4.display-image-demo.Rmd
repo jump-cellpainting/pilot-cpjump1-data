@@ -1,0 +1,174 @@
+---
+title: "Display images demo"
+params:
+  batch: 2020_11_04_CPJUMP1
+  data_path: ../../pilot-cpjump1-data
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+```
+
+
+```{r}
+batch <- params$batch
+futile.logger::flog.info(glue("Batch = {batch}"))
+```
+
+
+```{r}
+data_path <- params$data_path
+git_commit_hash <- system(glue::glue("cd {data_path}; git rev-parse HEAD; cd .."), intern = TRUE)
+print(glue::glue("Git commit of {data_path} = {git_commit_hash}"))
+git_remote <- system(glue::glue("cd {data_path}; git remote -v; cd .."), intern = TRUE)
+print(glue::glue("Git remote of {data_path} = {git_remote}"))
+```
+
+
+# Display images
+
+```{r}
+display_images <- function(query, lut, n_samples = 2) {
+  for (i in seq(nrow(query))) {
+    # get i'th query
+    query_i <- slice(query, i)
+    
+    # get corresponding lookup row
+    lut_query <-
+      inner_join(lut, query_i)
+#      inner_join(lut, query_i, by = intersect(names(lut), names(query)))
+    
+    # get tag for query
+    query_tag <- paste0(query_i, collapse = "__")
+    
+    cat('\n\n## `', query_tag, '`\n\n')
+    
+    # number of replicates to display
+    # NOTE: This can have unexpected output because the rows of `lut_query` may
+    # not really be replicates. E.g. if we specify only `Metadata_broad_sample`
+    # in a compound experiment that has multiple doses, `lut_query` will have
+    # all wells of `Metadata_broad_sample` at all dose points.
+    # TODO: Figure out how to handle this.
+    
+    n_samples <- min(n_samples, nrow(lut_query))
+    
+    for (j in seq(n_samples)) {
+      lut_query_j <- slice(lut_query, j)
+      
+      lut_query_tag <- paste0(lut_query_j, collapse = "__")
+      
+      Metadata_thumbnail_path_j <-
+        lut_query_j$Metadata_thumbnail_path
+      
+      image_code = glue("\n\n![{query_tag}]({Metadata_thumbnail_path_j})\n\n")
+      
+      cat(image_code)
+      
+      cat(
+        lut_query_j %>%
+          select(-Metadata_thumbnail_path) %>%
+          mutate(across(everything(), as.character)) %>%
+          pivot_longer(everything()) %>%
+          format_tsv() %>%
+          str_replace_all("\n", "\n\n")
+      )
+      
+    }
+    
+  }
+  
+}
+```
+
+
+```{r}
+lut_files <-
+  glue("{data_path}/visualize/{batch}/{batch}_.*_lut.csv")
+```
+
+
+```{r}
+lut <-
+  list.files(dirname(lut_files), full.names = T, pattern = basename(lut_files)) %>%
+  map_df(read_csv, col_types = cols()) %>%
+  mutate(Metadata_thumbnail_path = 
+           file.path(data_path, Metadata_thumbnail_path))
+```
+
+
+```{r results='asis', fig.width=20}
+experiment <-
+  data.frame(
+    Metadata_experiment_condition = "Standard",
+    Metadata_experiment_type = "Compound",
+    Metadata_cell_line = "U2OS",
+    Metadata_timepoint = 24
+  )
+
+query <- tribble(
+  ~ Metadata_broad_sample,
+  "BRD-K36660044-001-24-2",
+  "BRD-K67637637-003-11-8",
+  "BRD-K24616672-003-20-1",
+  "BRD-K61688984-001-02-9",
+  "BRD-K93632104-001-17-2"
+)
+
+query <- bind_cols(experiment, query)
+
+display_images(query, lut)
+```
+
+
+```{r results='asis', fig.width=20}
+experiment <-
+  data.frame(
+    Metadata_experiment_condition = "Standard",
+    Metadata_experiment_type = "CRISPR",
+    Metadata_cell_line = "U2OS",
+    Metadata_timepoint = 144
+  )
+
+query <- tribble(
+  ~ Metadata_broad_sample,
+  "BRDN0001146959",
+  "BRDN0000585461",
+  "BRDN0001483257",
+  "BRDN0001480092",
+  "BRDN0001054815"
+)
+
+query <- bind_cols(experiment, query)
+
+display_images(query, lut)
+```
+
+
+```{r results='asis', fig.width=20}
+experiment <-
+  data.frame(
+    Metadata_experiment_condition = "Standard",
+    Metadata_experiment_type = "ORF",
+    Metadata_cell_line = "U2OS",
+    Metadata_timepoint = 48
+  )
+
+query <- tribble(
+  ~ Metadata_broad_sample,
+  "ccsbBroad304_14597",
+  "ccsbBroad304_00733",
+  "ccsbBroad304_06412",
+  "ccsbBroad304_07535",
+  "ccsbBroad304_16173"
+)
+
+query <- bind_cols(experiment, query)
+
+display_images(query, lut)
+```
+

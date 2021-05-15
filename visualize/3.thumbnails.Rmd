@@ -1,16 +1,5 @@
 ---
 title: "Sample images"
-output:
-  html_notebook:
-    toc: yes
-    toc_float: yes
-    toc_depth: 3
-    number_sections: yes
-    theme: lumen
-  html_document:
-    toc: yes
-    toc_depth: '3'
-    df_print: paged
 params:
   batch: 2020_11_04_CPJUMP1
   experiment:
@@ -18,7 +7,7 @@ params:
       Metadata_experiment_condition: Standard
       Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
+      Metadata_timepoint: "24"
 ---
 
 # Setup
@@ -93,12 +82,46 @@ load_data %>%
   write_csv(create_montage_file)
 ```
 
+## Create lookup table
+
+Create lookup table that can later be used to query locations of thumbnails.
+The `Metadata_thumbnail_path` is relative to this repo's path, so that will need 
+to be update appropriately (by prepending the location of the repo's path).
+
+```{r}
+sample_images_metadata_file <- glue("{batch}/{batch}_{experiment_tag}_sample_images_metadata.csv")
+
+lut_file <- glue("{batch}/{batch}_{experiment_tag}_lut.csv")
+
+create_montage <- 
+  read_csv(create_montage_file, col_types = cols())
+
+sample_images_metadata <- 
+  read_csv(sample_images_metadata_file, col_types = cols())
+
+lut <-
+  sample_images_metadata %>%
+  inner_join(create_montage) %>%
+  select(starts_with("Metadata_")) %>%
+  mutate(Metadata_thumbnail_path = 
+           file.path(
+             glue("visualize/{batch}"), 
+             Metadata_thumbnail_path)
+         )
+
+lut %>% 
+  write_csv(lut_file)
+```
+
 ## Generate montage
 
-```{sh}
+TODO: Factor this out as a separate bash script instead of including it in 
+a notebook
+
+```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/montage
-EXPERIMENT_TAG=Standard_Compound_U2OS_48
+EXPERIMENT_TAG=Standard_CRISPR_U2OS_144
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
@@ -111,18 +134,21 @@ export -f create_montage
 parallel \
   --header ".*\n" \
   -C "," \
-  --joblog ${IMAGE_DIR}/create_montage.log \
+  --joblog ${IMAGE_DIR}/${BATCH}_${EXPERIMENT_TAG}_create_montage.log \
   -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_create_montage.csv \
   create_montage {1} {2} {3} {4} {5}
 ```
 
 ## Generate thumbnail montage
 
-```{sh}
+TODO: Factor this out as a separate bash script instead of including it in 
+a notebook
+
+```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 SOURCE_IMAGE_DIR=${BATCH}/montage
 DEST_IMAGE_DIR=${BATCH}/thumbnail_montage
-EXPERIMENT_TAG=Standard_Compound_U2OS_48
+EXPERIMENT_TAG=Standard_CRISPR_U2OS_144
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
 
@@ -131,7 +157,7 @@ parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $DEST_IMAGE_DIR/{}
 parallel \
   -a /tmp/plates.txt \
   --no-run-if-empty \
-  --joblog ${DEST_IMAGE_DIR}/create_thumbnail.log \
+  --joblog ${DEST_IMAGE_DIR}/${BATCH}_${EXPERIMENT_TAG}_create_thumbnail.log \
   mogrify -format png -path ${DEST_IMAGE_DIR}/{1}/ -thumbnail 1082x ${SOURCE_IMAGE_DIR}/{1}/*.jpg
 ```
 

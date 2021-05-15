@@ -19,7 +19,7 @@ params:
       Metadata_experiment_condition: Standard
       Metadata_experiment_type: Compound
       Metadata_cell_line: U2OS
-      Metadata_timepoint: "48"
+      Metadata_timepoint: "24"
   nesting_level_0:
     value:
       - Metadata_experiment_condition
@@ -50,9 +50,11 @@ batch <- params$batch
 futile.logger::flog.info(glue("Batch = {batch}"))
 ```
 
+
 ```{r}
 experiment <- as.data.frame(params$experiment)
 ```
+
 
 ```{r}
 experiment_tag <-
@@ -76,20 +78,39 @@ library(tidyverse)
 
 ## Load 
 
-```{r prepare_load_data, message=FALSE}
+```{r prepare_load_data, message=FALSE, eval=FALSE}
 load_data <-
- list.files("../load_data_csv/", pattern = "load_data.csv", full.names = T, recursive = T)  %>%
- map_df(read_csv)
+ list.files("../load_data_csv", pattern = "load_data.csv", full.names = T, recursive = T) %>%
+  map_df(function(load_data_path) {
+    load_data_i <- read_csv(load_data_path)
+    batch_id <- basename(dirname(dirname(load_data_path)))
+    load_data_i <- load_data_i %>% mutate(Metadata_Batch = batch_id)
+    load_data_i
+  })
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 load_data %>% write_parquet("~/Desktop/load_data.parquet")
 ```
 
 
 ```{r}
 load_data <- read_parquet("~/Desktop/load_data.parquet")
+```
+
+
+```{r}
+load_data <- load_data %>% filter(Metadata_Batch == batch)
+```
+
+
+```{r}
+load_data %>% 
+  distinct(Metadata_Batch, Metadata_Plate) %>%
+  add_count(Metadata_Plate) %>% 
+  arrange(Metadata_Plate) %>%
+  filter(n > 1)
 ```
 
 
@@ -101,8 +122,8 @@ convert_to_s3_url <- function(pathname, filename)  {
         "/home/ubuntu/bucket",
         "https://s3.amazonaws.com/jump-cellpainting") %>%
       str_replace(
-        "2019_07_11_JUMP-CP/2020_11_04_CPJUMP1/images/",
-        "2019_07_11_JUMP-CP-pilots/2020_11_04_CPJUMP1/images/"),
+        glue("2019_07_11_JUMP-CP/{batch}/images/"),
+        glue("2019_07_11_JUMP-CP-pilots/{batch}/images/")),
     filename
   )
   
@@ -132,7 +153,10 @@ profiles_metadata <-
 
 load_data <-
   load_data %>%
-  inner_join(profiles_metadata)
+  select(Metadata_Batch, Metadata_Plate, Metadata_Well, 
+         Metadata_Site, Metadata_FieldID, Metadata_Row, Metadata_Col,
+         matches("^FileName_|^PathName_|^URL_")) %>%
+  inner_join(profiles_metadata, by = c("Metadata_Plate", "Metadata_Well"))
 ```
 
 
@@ -163,6 +187,7 @@ load_data %>%
 ```{r}
 load_data %>% count(Metadata_FieldID)
 ```
+
 
 ```{r}
 n_perturbations <-
@@ -200,10 +225,6 @@ load_data <-
   select(matches("^Metadata"), matches("^URL"), matches("^FileName_Orig"))
 ```
 
-
-```{r}
-load_data$Metadata_Batch <- params$batch
-```
 
 ## Add URLs for outlines
 
@@ -250,7 +271,7 @@ load_data %<>%
 ```{r}
 load_data_pivoted <-
   load_data %>%
-  select(Metadata_Plate,  Metadata_Well, matches("^URL_")) %>%
+  select(Metadata_Plate, Metadata_Well, matches("^URL_")) %>%
   gather(Metadata_Channel, URL, -Metadata_Plate, -Metadata_Well) %>%
   mutate(filename = basename(URL)) %>%
   select(Metadata_Plate, Metadata_Well, Metadata_Channel, filename, URL)
@@ -259,9 +280,10 @@ load_data_pivoted %>%
   write_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images.csv"))
 ```
 
+
 ```{r}
 load_data %>%
-  select(matches("^Metadata"),  matches("^FileName_Orig")) %>%
+  select(matches("^Metadata"), matches("^FileName_Orig")) %>%
   write_csv(glue("{batch}/{batch}_{experiment_tag}_sample_images_metadata.csv"))
 ```
 
@@ -269,10 +291,15 @@ load_data %>%
 
 Run this on command line to download the images:
 
+NOTE: `EXPERIMENT_TAG` and `BATCH` need to be updated by hand
+
+TODO: Factor this out as a separate bash script instead of including it in 
+a notebook
+
 ```{sh eval=FALSE}
 BATCH=2020_11_04_CPJUMP1
 IMAGE_DIR=${BATCH}/image_cache
-EXPERIMENT_TAG=Standard_Compound_U2OS_48
+EXPERIMENT_TAG=Standard_CRISPR_U2OS_144
 mkdir -p $IMAGE_DIR
 
 cut -d"," -f1 ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
@@ -284,7 +311,7 @@ parallel \
  -C "," \
  -a ${BATCH}/${BATCH}_${EXPERIMENT_TAG}_sample_images.csv \
  --eta \
- --joblog ${IMAGE_DIR}/download.log \
+ --joblog ${IMAGE_DIR}/${BATCH}_${EXPERIMENT_TAG}_download.log \
  wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
   
 ```
