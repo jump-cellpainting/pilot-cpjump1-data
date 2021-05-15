@@ -62,3 +62,12 @@ for (i in seq(nrow(experiment_df))) {
     params = list(experiment = as.list(experiment_i))
   )  
 }
+
+notebook_name <- "4.display-image-demo"
+
+rmarkdown::render(
+  glue("{notebook_name}.Rmd"),
+  output_dir = "knit_notebooks",
+  output_format = "html_notebook",
+  output_file = glue("{notebook_name}")
+) 
