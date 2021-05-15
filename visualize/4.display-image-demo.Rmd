@@ -105,9 +105,9 @@ lut <-
 experiment <-
   data.frame(
     Metadata_experiment_condition = "Standard",
-    Metadata_experiment_type = "CRISPR",
+    Metadata_experiment_type = "Compound",
     Metadata_cell_line = "U2OS",
-    Metadata_timepoint = 144
+    Metadata_timepoint = 24
   )
 
 query <- tribble(
@@ -126,6 +126,14 @@ display_images(query, lut)
 
 
 ```{r results='asis', fig.width=20}
+experiment <-
+  data.frame(
+    Metadata_experiment_condition = "Standard",
+    Metadata_experiment_type = "CRISPR",
+    Metadata_cell_line = "U2OS",
+    Metadata_timepoint = 144
+  )
+
 query <- tribble(
   ~ Metadata_broad_sample,
   "BRDN0001146959",
@@ -135,11 +143,21 @@ query <- tribble(
   "BRDN0001054815"
 )
 
+query <- bind_cols(experiment, query)
+
 display_images(query, lut)
 ```
 
 
 ```{r results='asis', fig.width=20}
+experiment <-
+  data.frame(
+    Metadata_experiment_condition = "Standard",
+    Metadata_experiment_type = "ORF",
+    Metadata_cell_line = "U2OS",
+    Metadata_timepoint = 48
+  )
+
 query <- tribble(
   ~ Metadata_broad_sample,
   "ccsbBroad304_14597",
@@ -148,6 +166,8 @@ query <- tribble(
   "ccsbBroad304_07535",
   "ccsbBroad304_16173"
 )
+
+query <- bind_cols(experiment, query)
 
 display_images(query, lut)
 ```
