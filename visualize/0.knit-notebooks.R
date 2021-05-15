@@ -71,3 +71,10 @@ rmarkdown::render(
   output_format = "html_notebook",
   output_file = glue("{notebook_name}")
 ) 
+
+rmarkdown::render(
+  glue("{notebook_name}.Rmd"),
+  output_dir = "knit_notebooks",
+  output_format = "github_document",
+  output_file = glue("{notebook_name}")
+) 
