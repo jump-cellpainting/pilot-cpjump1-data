@@ -101,7 +101,8 @@ futile.logger::flog.info(glue("Loading {parquet_file} ..."))
 stopifnot(file.exists(parquet_file))
 
 cell_count_df <-
-  read_parquet(parquet_file, col_select = matches("Metadata_|Cells_Number_Object_Number")) %>%
+  read_parquet(parquet_file,
+               col_select = matches("Metadata_|Cells_Number_Object_Number")) %>%
   mutate(Metadata_pert_iname_aug = ifelse(
     Metadata_pert_type == "trt",
     Metadata_pert_iname,
@@ -114,11 +115,14 @@ cell_count_df <-
   summarise(cell_count = median(cell_count), .groups = "keep") %>%
   ungroup() %>%
   select(
-    Metadata_experiment_condition, 
-    Metadata_experiment_type, 
-    Metadata_cell_line, 
-    Metadata_timepoint, 
-    cell_count)
+    Metadata_experiment_condition,
+    Metadata_experiment_type,
+    Metadata_cell_line,
+    Metadata_timepoint,
+    Metadata_pert_iname_aug,
+    Metadata_broad_sample,
+    cell_count
+  )
 #     Metadata_broad_sample was dropped because the upstream metadata has not yet been fixed. It should be added back!
 ```
 
@@ -136,6 +140,7 @@ plot_metric_v_cellcount <-
   # metrics <- level_1_metrics
   # metric_name <- "sim_scaled_mean_ref_i_mean_i"
   # plot_title <- experiment_tag
+  # plot_subtitle <- data_level
     
   metric_sym <- sym(metric_name)
 
