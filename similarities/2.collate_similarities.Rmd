@@ -124,14 +124,17 @@ Keep, both, (a, b) and (b, a)
 
 ```{r}
 all_same_cols_rep <-
-  c("Metadata_cell_line",
+  c(
+    "Metadata_cell_line",
     "Metadata_timepoint",
     "Metadata_experiment_condition",
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
     "Metadata_negcon_or_other",
-    "Metadata_Well") # including well here
+  ) 
+# `Metadata_Well` was previously included, likely to figure out position 
+# effects. 
 ```
 
 ## Similarity to replicates (only references)
