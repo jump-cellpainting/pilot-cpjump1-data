@@ -77,7 +77,23 @@ if(!is.null(experiment))  {
   profiles %<>% inner_join(experiment)
   
 }
+```
 
+Create a new column `Metadata_pert_iname_aug` so that controls and empty wells in different positions are unique perturbations.
+This is better than using `Metadata_Well` as an additional grouping columns because we don't want treatment wells to be handled this way (entirely because ORFs have 2 replicates on the same plate)
+
+```{r}
+profiles <-
+  profiles %>%
+  mutate(Metadata_pert_iname_aug = ifelse(
+    Metadata_pert_type == "trt",
+    Metadata_pert_iname,
+    paste(Metadata_pert_iname, Metadata_Well, sep = "_")
+  ))
+```
+
+
+```{r}
 profiles %>%
   distinct(Metadata_experiment_condition, Metadata_experiment_type, Metadata_Plate) %>%
   group_by(Metadata_experiment_condition, Metadata_experiment_type) %>%

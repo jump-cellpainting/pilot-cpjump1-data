@@ -102,6 +102,11 @@ stopifnot(file.exists(parquet_file))
 
 cell_count_df <-
   read_parquet(parquet_file, col_select = matches("Metadata_|Cells_Number_Object_Number")) %>%
+  mutate(Metadata_pert_iname_aug = ifelse(
+    Metadata_pert_type == "trt",
+    Metadata_pert_iname,
+    paste(Metadata_pert_iname, Metadata_Well, sep = "_")
+  )) %>%
   mutate(across(matches("Metadata"), as.character)) %>%
   select(matches("Metadata_"), cell_count = Cells_Number_Object_Number) %>%
   inner_join(experiment) %>%
@@ -113,11 +118,8 @@ cell_count_df <-
     Metadata_experiment_type, 
     Metadata_cell_line, 
     Metadata_timepoint, 
-    Metadata_Well, 
     cell_count)
-
 #     Metadata_broad_sample was dropped because the upstream metadata has not yet been fixed. It should be added back!
-
 ```
 
 # Inspect metrics

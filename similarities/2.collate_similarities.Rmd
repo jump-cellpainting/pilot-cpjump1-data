@@ -131,10 +131,9 @@ all_same_cols_rep <-
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
-    "Metadata_negcon_or_other",
-  ) 
-# `Metadata_Well` was previously included, likely to figure out position 
-# effects. 
+    "Metadata_pert_iname_aug",
+    "Metadata_negcon_or_other"
+  )
 ```
 
 ## Similarity to replicates (only references)
@@ -162,6 +161,7 @@ all_same_cols_rep_ref <-
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
+    "Metadata_pert_iname_aug",
     "Metadata_negcon_or_other",
     "Metadata_Well"
   )
@@ -242,6 +242,7 @@ annotation_cols <-
     "Metadata_experiment_type",
     "Metadata_broad_sample",
     "Metadata_pert_iname",
+    "Metadata_pert_iname_aug",
     "Metadata_negcon_or_other",
     "Metadata_Well")
 
