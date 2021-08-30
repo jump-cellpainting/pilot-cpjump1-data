@@ -1,0 +1,184 @@
+---
+title: "Explore metrics"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    number_sections: yes
+    theme: lumen
+params:
+  batch: "2020_11_04_CPJUMP1"
+  experiment: 
+    value:
+      Metadata_experiment_condition: Standard
+  strata:
+    value:
+      - Metadata_experiment_condition
+      - Metadata_experiment_type
+      - Metadata_cell_line
+      - Metadata_timepoint
+  data_level: normalized_feature_select_outlier_trimmed
+  normalization: whole_plate
+  similarity_method: cosine
+---
+
+# Setup
+
+```{r message=FALSE}
+library(magrittr)
+library(tidyverse)
+library(glue)
+library(arrow)
+library(matric)
+library(logger)
+source("utils.R")
+log_layout(layout_no_timestamp)
+```
+
+
+```{r}
+process_notebook_params(params)
+
+log_info("Comparison tag = {comparision_tag}")
+
+log_info("Normalization = {normalization}. Using suffix = '{norm_suffix}'")
+
+log_info("Batch = {batch}")
+
+log_info("Data level = {data_level}")
+
+log_info("Data level tag = {data_level_tag}")
+
+log_info("Similarity method = {similarity_method}")
+
+log_info("Filename prefix = {filename_prefix}")
+```
+
+```{r}
+metric_set <- "level_1_metrics"
+
+parquet_file <-
+  glue("{batch}/{filename_prefix}_sim_{similarity_method}_{metric_set}.parquet")
+
+level_1_metrics <- arrow::read_parquet(glue(parquet_file))
+```
+
+
+```{r}
+level_1_metrics %>%
+  inner_join(
+    data.frame(
+      Metadata_experiment_type = "Compound",
+      Metadata_timepoint = "48",
+      Metadata_cell_line = "A549"
+    )
+  ) %>%
+  mutate(point_order = as.numeric(factor(
+    Metadata_negcon_or_other,
+    levels = c("empty", "negcon", "pert"),
+    ordered = TRUE
+  ))) %>%
+  arrange(desc(point_order)) %>%
+  ggplot(
+    aes(
+      #sim_retrieval_r_precision_ref_i_mean_i,
+      #sim_retrieval_average_precision_ref_i_mean_i,
+      sim_ranked_relrank_mean_ref_i_mean_i,
+      #sim_retrieval_average_precision_non_rep_i_mean_i,
+      sim_ranked_relrank_mean_non_rep_i_mean_i,
+      #sim_scaled_mean_ref_i_mean_i,
+      color = Metadata_negcon_or_other
+    )
+  ) +
+  geom_point() +
+  scale_colour_manual(values = c(
+    "empty" = "green",
+    "negcon" = "red",
+    "pert" = "black"
+  )) +
+  facet_wrap(Metadata_experiment_type ~ Metadata_timepoint ~ Metadata_cell_line,
+             ncol = 2) +
+  theme(legend.position = "bottom") + 
+  coord_equal()
+
+filter_df <-
+  data.frame(
+    Metadata_cell_line = "A549",
+    Metadata_experiment_type = "Compound",
+    Metadata_timepoint = "48",
+    Metadata_pert_iname = "DMSO",
+    id1 = 1621
+  )
+
+level_1_0 <-
+  read_parquet(
+    "2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_cosine_level_1_0_metrics.parquet"
+  )
+
+level_1_0 %>%
+  inner_join(filter_df) %>%
+  select(id1,
+         sim_scaled_mean_ref_i,
+         sim_retrieval_r_precision_ref_i,
+         sim_retrieval_average_precision_ref_i,
+         sim_ranked_relrank_mean_ref_i) %>% 
+  pivot_longer(-id1) %>%
+  pivot_wider(names_from = id1, values_from = value, names_prefix = "id")
+
+collated_sim <- 
+  read_parquet("2020_11_04_CPJUMP1/2020_11_04_CPJUMP1_Standard_same_cell_line-experiment_condition-experiment_type-timepoint_normalized_feature_select_outlier_trimmed_sim_cosine_collated.parquet")
+
+sim_i <-
+  collated_sim %>%
+  inner_join(filter_df) %>%
+  select(id1, id2, sim, type) 
+
+sim_i <- 
+  sim_i %>% 
+  sim_annotate(
+    attr(collated_sim, "row_metadata"), 
+    annotation_cols =c("Metadata_Well")) %>% 
+  inner_join(sim_i)
+
+sim_background_nested <-
+  sim_i %>% filter(type == "ref") %>% select(-id2, -type) %>% nest(data_background = c(sim, Metadata_Well2))
+
+sim_signal_nested <-
+  sim_i %>% filter(type == "rep") %>% select(-id2, -type) %>% nest(data_signal = c(sim, Metadata_Well2))
+
+sim_signal_retrieval <-
+  sim_signal_nested %>%
+  dplyr::inner_join(sim_background_nested) %>%
+  dplyr::mutate(data_retrieval =
+                  purrr::map2(data_signal,
+                              data_background,
+                              function(signal, background) {
+                                dplyr::bind_rows(
+                                  signal %>% dplyr::mutate(truth = "signal"),
+                                  background %>% dplyr::mutate(truth = "background")
+                                ) %>%
+                                  dplyr::mutate(truth = as.factor(truth)) %>%
+                                  dplyr::mutate(signal_probrank = rank(sim) / dplyr::n()) %>%
+                                  dplyr::arrange(dplyr::desc(signal_probrank))
+                              })) %>%
+  dplyr::select(-data_background, -data_signal)
+
+df <-
+  sim_signal_retrieval %>%
+  pull(data_retrieval) %>% 
+  pluck(1)
+
+df
+```
+
+
+```{r eval=FALSE}
+yardstick::pr_curve(df, truth, signal_probrank, event_level = "second") %>%
+  print()  %>%
+  ggplot(aes(x = recall, y = precision)) +
+  geom_path() +
+  geom_point() +
+  coord_equal() +
+  theme_bw()
+```
