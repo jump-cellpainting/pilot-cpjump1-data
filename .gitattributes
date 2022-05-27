@@ -1,5 +1,2 @@
 *.gz filter=lfs diff=lfs merge=lfs -text
-<<<<<<< HEAD
-=======
 *.parquet filter=lfs diff=lfs merge=lfs -text
->>>>>>> d25d0714aad16cff9f33e6998fb9334ffc87c566
