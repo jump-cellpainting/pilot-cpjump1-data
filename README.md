@@ -1,4 +1,5 @@
-This repo is now outdated. See https://github.com/jump-cellpainting/2023_Chandrasekaran_submitted for the up-to-date profiles.
+**This repo is now outdated. See https://github.com/jump-cellpainting/2023_Chandrasekaran_submitted for the up-to-date profiles.
+**
 
 ## Other data
 
