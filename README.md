@@ -1,4 +1,6 @@
-**This repo is now outdated. See https://github.com/jump-cellpainting/2023_Chandrasekaran_submitted for the up-to-date profiles.**
+> [!CAUTION]
+> This repo is now outdated.
+> See https://github.com/carpenter-singh-lab/2024_Chandrasekaran_NatureMethods for the profiles used in <https://doi.org/10.1038/s41592-024-02241-6>.
 
 ## Other data
 
